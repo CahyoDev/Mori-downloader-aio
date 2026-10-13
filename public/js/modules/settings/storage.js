@@ -10,6 +10,7 @@ import { translations } from "../../i18n/index.js";
 import { showConfirm } from "../modals.js";
 import { renderHistory } from "../../ui.js";
 import { onHistoryItemClick, onHistoryDeleteClick, safeSetHistory } from "../history.js";
+import { invalidateGalleryCache } from "../gallery.js";
 import {
   currentLang,
   pathVal,
@@ -144,6 +145,7 @@ export async function updateStorageInfo() {
 }
 
 export async function clearCacheSilently() {
+  invalidateGalleryCache();
   if (!Filesystem) return;
   try {
     const history = JSON.parse(localStorage.getItem("mori_history") || "[]");
@@ -608,6 +610,7 @@ export function initStorageSettings() {
               }
             } catch (_) {}
           }
+          invalidateGalleryCache();
           await updateStorageInfo();
           showToast(lang["label-cache-cleared"] || "Cache cleared");
         } catch (_) {
@@ -651,6 +654,7 @@ export function initStorageSettings() {
               }
             } catch (_) {}
           }
+          invalidateGalleryCache();
           await updateStorageInfo();
           renderHistory(onHistoryItemClick, onHistoryDeleteClick);
           showToast(lang["label-data-wiped"] || "All data wiped");

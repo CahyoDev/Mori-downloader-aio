@@ -498,6 +498,51 @@ async fn tauri_open_folder(path: String) -> Result<(), String> {
     Ok(())
 }
 
+#[derive(serde::Serialize)]
+struct DirEntryInfo {
+    name: String,
+    path: String,
+    size: u64,
+    modified: u64,
+}
+
+#[tauri::command]
+async fn tauri_list_dir(folder: Option<String>) -> Result<Vec<DirEntryInfo>, String> {
+    let target_dir = resolve_desktop_directory(folder.as_deref());
+    let mut results = Vec::new();
+
+    fn collect_entries(dir: &std::path::Path, list: &mut Vec<DirEntryInfo>) {
+        if let Ok(entries) = std::fs::read_dir(dir) {
+            for entry in entries.flatten() {
+                if let Ok(meta) = entry.metadata() {
+                    let path = entry.path();
+                    if meta.is_file() {
+                        let name = entry.file_name().to_string_lossy().to_string();
+                        let size = meta.len();
+                        let modified = meta
+                            .modified()
+                            .ok()
+                            .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+                            .map(|d| d.as_secs())
+                            .unwrap_or(0);
+                        list.push(DirEntryInfo {
+                            name,
+                            path: path.to_string_lossy().to_string(),
+                            size,
+                            modified,
+                        });
+                    } else if meta.is_dir() {
+                        collect_entries(&path, list);
+                    }
+                }
+            }
+        }
+    }
+
+    collect_entries(&target_dir, &mut results);
+    Ok(results)
+}
+
 mod engine_sec;
 
 #[tauri::command]
@@ -519,6 +564,7 @@ pub fn run() {
         tauri_get_folder_size,
         tauri_pick_folder,
         tauri_open_folder,
+        tauri_list_dir,
         tauri_get_engine_key
     ])
     .setup(|app| {

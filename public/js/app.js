@@ -382,6 +382,16 @@ if (
       return;
     }
 
+    const galleryViewer = document.querySelector(".gallery-viewer");
+    if (galleryViewer) {
+      if (typeof galleryViewer._close === "function") {
+        galleryViewer._close();
+      } else {
+        galleryViewer.remove();
+      }
+      return;
+    }
+
     const openModal = document.querySelector(".modal-overlay:not(.hidden)");
     if (openModal) {
       openModal.classList.add("hidden");
