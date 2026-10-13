@@ -556,13 +556,21 @@
               <input type="text" class="gallery-search" placeholder="Search files..." data-i18n-placeholder="gallery-search-placeholder" autocomplete="off" />
             </div>
             <div class="gallery-toolbar-actions">
-              <select class="gallery-sort">
-                <option value="newest" data-i18n="gallery-sort-newest">Newest</option>
-                <option value="oldest" data-i18n="gallery-sort-oldest">Oldest</option>
-                <option value="name" data-i18n="gallery-sort-name">Name A-Z</option>
-                <option value="largest" data-i18n="gallery-sort-largest">Largest</option>
-                <option value="smallest" data-i18n="gallery-sort-smallest">Smallest</option>
-              </select>
+              <div class="gallery-custom-select" id="gallerySortSelect">
+                <span class="gallery-sort-text" id="gallerySortText" data-i18n="gallery-sort-newest">Newest</span>
+                <div class="gallery-sort-arrow">
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
+                    <path d="M7 10l5 5 5-5z" />
+                  </svg>
+                </div>
+                <div class="gallery-sort-menu hidden" id="gallerySortMenu">
+                  <div class="gallery-sort-item active" data-value="newest" data-i18n="gallery-sort-newest">Newest</div>
+                  <div class="gallery-sort-item" data-value="oldest" data-i18n="gallery-sort-oldest">Oldest</div>
+                  <div class="gallery-sort-item" data-value="name" data-i18n="gallery-sort-name">Name A-Z</div>
+                  <div class="gallery-sort-item" data-value="largest" data-i18n="gallery-sort-largest">Largest</div>
+                  <div class="gallery-sort-item" data-value="smallest" data-i18n="gallery-sort-smallest">Smallest</div>
+                </div>
+              </div>
               <button class="gallery-rescan" aria-label="Rescan">
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
                   <path d="M17.65 6.35A7.958 7.958 0 0 0 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 12 18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
@@ -576,10 +584,18 @@
             <button class="gallery-chip" data-filter="video" data-i18n="gallery-filter-video">Video</button>
             <button class="gallery-chip" data-filter="audio" data-i18n="gallery-filter-audio">Audio</button>
             <button class="gallery-chip" data-filter="image" data-i18n="gallery-filter-image">Photo</button>
+            <button class="gallery-chip" data-filter="pdf" data-i18n="gallery-filter-pdf">PDF</button>
           </div>
           <span class="gallery-count"></span>
 
-          <div class="gallery-grid"></div>
+          <div class="gallery-grid">
+            <div class="gallery-skeleton-card"><div class="gallery-skeleton-thumb"></div><div class="gallery-skeleton-meta"><div class="gallery-skeleton-line title"></div><div class="gallery-skeleton-line short"></div></div></div>
+            <div class="gallery-skeleton-card"><div class="gallery-skeleton-thumb"></div><div class="gallery-skeleton-meta"><div class="gallery-skeleton-line title"></div><div class="gallery-skeleton-line short"></div></div></div>
+            <div class="gallery-skeleton-card"><div class="gallery-skeleton-thumb"></div><div class="gallery-skeleton-meta"><div class="gallery-skeleton-line title"></div><div class="gallery-skeleton-line short"></div></div></div>
+            <div class="gallery-skeleton-card"><div class="gallery-skeleton-thumb"></div><div class="gallery-skeleton-meta"><div class="gallery-skeleton-line title"></div><div class="gallery-skeleton-line short"></div></div></div>
+            <div class="gallery-skeleton-card"><div class="gallery-skeleton-thumb"></div><div class="gallery-skeleton-meta"><div class="gallery-skeleton-line title"></div><div class="gallery-skeleton-line short"></div></div></div>
+            <div class="gallery-skeleton-card"><div class="gallery-skeleton-thumb"></div><div class="gallery-skeleton-meta"><div class="gallery-skeleton-line title"></div><div class="gallery-skeleton-line short"></div></div></div>
+          </div>
           <div class="gallery-empty hidden">
             <svg viewBox="0 0 24 24" width="48" height="48" fill="currentColor">
               <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/>
