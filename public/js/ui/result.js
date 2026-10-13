@@ -146,6 +146,13 @@ export function renderMediaSlides(container, items, resultThumbnail) {
       const loopSetting = localStorage.getItem("mori_loop") !== "false";
       audio.autoplay = false;
       audio.loop = loopSetting;
+      if (loopSetting) audio.setAttribute("loop", "");
+      audio.addEventListener("ended", () => {
+        if (localStorage.getItem("mori_loop") !== "false") {
+          audio.currentTime = 0;
+          audio.play().catch(() => {});
+        }
+      });
 
       const tauriInvoke =
         window.__TAURI__?.core?.invoke ||

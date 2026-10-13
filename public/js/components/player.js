@@ -124,10 +124,16 @@ export function createVideoPlayer(dl, index, resultThumbnail) {
 
   const isSlideActive = () => {
     if (video._isStopped) return false;
+    if (
+      playerContainer.closest(".gallery-viewer") ||
+      playerContainer.closest(".gallery-viewer-body")
+    ) {
+      return true;
+    }
     const parentSlide =
       playerContainer.closest(".preview-slide") ||
       playerContainer.parentElement;
-    if (parentSlide) {
+    if (parentSlide && parentSlide.classList.contains("preview-slide")) {
       return parentSlide.classList.contains("active");
     }
     return index === 0;
@@ -137,7 +143,10 @@ export function createVideoPlayer(dl, index, resultThumbnail) {
     if (video._isStopped || userPaused) return;
     const isAutoPlay = localStorage.getItem("mori_autoplay") !== "false";
     if (isAutoPlay && isSlideActive() && video.paused) {
-      video.loop = localStorage.getItem("mori_loop") !== "false";
+      const isLoop = localStorage.getItem("mori_loop") !== "false";
+      video.loop = isLoop;
+      if (isLoop) video.setAttribute("loop", "");
+      else video.removeAttribute("loop");
       const playPromise = video.play();
       if (playPromise !== undefined) {
         playPromise.catch((err) => {
@@ -350,6 +359,11 @@ export function createVideoPlayer(dl, index, resultThumbnail) {
 
   const loopSetting = localStorage.getItem("mori_loop") !== "false";
   video.loop = loopSetting;
+  if (loopSetting) {
+    video.setAttribute("loop", "");
+  } else {
+    video.removeAttribute("loop");
+  }
   video.preload = index === 0 ? "auto" : "metadata";
   const autoPlaySetting = localStorage.getItem("mori_autoplay") !== "false";
   video.autoplay = false;
@@ -834,6 +848,10 @@ export function createVideoPlayer(dl, index, resultThumbnail) {
   };
 
   video.onpause = () => {
+    const isLoop = localStorage.getItem("mori_loop") !== "false";
+    if (video.ended && isLoop && !userPaused && !video._isStopped) {
+      return;
+    }
     playIcon.classList.remove("hidden");
     pauseIcon.classList.add("hidden");
     bigPlay.innerHTML = `<svg viewBox="0 0 24 24" width="30" height="30" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>`;
@@ -844,7 +862,10 @@ export function createVideoPlayer(dl, index, resultThumbnail) {
     if (e) e.stopPropagation();
     if (video.paused) {
       userPaused = false;
-      video.loop = localStorage.getItem("mori_loop") !== "false";
+      const isLoop = localStorage.getItem("mori_loop") !== "false";
+      video.loop = isLoop;
+      if (isLoop) video.setAttribute("loop", "");
+      else video.removeAttribute("loop");
       video.play().catch((err) => {
         console.warn("video.play() failed:", err);
       });
@@ -853,6 +874,16 @@ export function createVideoPlayer(dl, index, resultThumbnail) {
       video.pause();
     }
   };
+
+  video.addEventListener("ended", () => {
+    const isLoop = localStorage.getItem("mori_loop") !== "false";
+    if (isLoop && !userPaused && !video._isStopped) {
+      video.currentTime = 0;
+      video.play().catch((err) => {
+        console.warn("video loop play failed:", err);
+      });
+    }
+  });
 
   bigPlay.onclick = togglePlay;
   playBtn.onclick = togglePlay;

@@ -1,18 +1,21 @@
 // gallery.js — scan Mori download folders into a media gallery
-import { Filesystem, pauseAllMedia, showToast } from "../utils/index.js";
+import { Filesystem, pauseAllMedia, stopAllMedia, showToast } from "../utils/index.js";
 import { t } from "../i18n/index.js";
 import { createVideoPlayer } from "../components/player.js";
 
 const VIDEO_EXT = /\.(mp4|mov|mkv|webm|m4v)$/i;
 const AUDIO_EXT = /\.(mp3|m4a|aac|opus|flac|wav|ogg)$/i;
 const IMAGE_EXT = /\.(jpe?g|png|webp|gif|bmp)$/i;
-const DOC_EXT = /\.(pdf)$/i;
+const PDF_EXT = /\.(pdf)$/i;
 
 let galleryItems = [];
 let galleryFilter = "all";
 let gallerySort = "newest";
 let galleryQuery = "";
-let scanInProgress = false;
+let activeScanPromise = null;
+let searchDebounceTimer = null;
+const cardCache = new Map();
+let galleryNeedsRescan = false;
 
 function esc(str) {
   return String(str ?? "")
@@ -27,7 +30,7 @@ function fileCategory(name) {
   if (VIDEO_EXT.test(name)) return "video";
   if (AUDIO_EXT.test(name)) return "audio";
   if (IMAGE_EXT.test(name)) return "image";
-  if (DOC_EXT.test(name)) return "doc";
+  if (PDF_EXT.test(name)) return "pdf";
   return null;
 }
 
@@ -71,7 +74,14 @@ function toLocalMediaUrl(pathOrUri) {
     window.__TAURI__?.core?.convertFileSrc ||
     window.__TAURI_INTERNALS__?.convertFileSrc ||
     window.__TAURI__?.convertFileSrc;
-  if (tauriConvert) return tauriConvert(p.replace(/^\/+/, "").replace(/^([a-zA-Z]:)[/\\]/, "$1/"));
+  if (tauriConvert) {
+    const cleanTauri = /^[a-zA-Z]:/i.test(p)
+      ? p.replace(/^([a-zA-Z]:)[/\\]/, "$1/")
+      : p.startsWith("/")
+        ? p
+        : "/" + p;
+    return tauriConvert(cleanTauri);
+  }
 
   const platform = window.Capacitor?.getPlatform?.();
   if (!p.startsWith("/")) {
@@ -86,107 +96,116 @@ function toLocalMediaUrl(pathOrUri) {
 export function getGalleryScanFolders() {
   const folders = [];
   const add = (path) => {
-    if (path && !folders.includes(path)) folders.push(path);
+    if (path && typeof path === "string") {
+      const trimmed = path.trim();
+      if (trimmed && !folders.includes(trimmed)) folders.push(trimmed);
+    }
   };
-  add(localStorage.getItem("mori_download_path"));
+  add(localStorage.getItem("mori_download_path") || "Download/Mori");
   add(localStorage.getItem("mori_video_path"));
-  add(localStorage.getItem("mori_music_path"));
-  add(localStorage.getItem("mori_photo_path"));
-  add(localStorage.getItem("mori_pdf_path"));
-  if (folders.length === 0) {
-    add("Download/Mori");
-    add("Music/Mori");
-    add("Pictures/Mori");
-  }
+  add(localStorage.getItem("mori_music_path") || "Music/Mori");
+  add("Download/Mori/Music");
+  add(localStorage.getItem("mori_photo_path") || "Pictures/Mori");
+  add(localStorage.getItem("mori_pdf_path") || "Documents/Mori");
   return folders;
 }
 
 export async function scanGallery(force = false) {
-  if (scanInProgress) return galleryItems;
+  if (activeScanPromise) return activeScanPromise;
   if (!force && galleryItems.length > 0) return galleryItems;
-  scanInProgress = true;
-  try {
-    const folders = getGalleryScanFolders();
-    const tauriInvoke =
-      window.__TAURI__?.core?.invoke ||
-      window.__TAURI_INTERNALS__?.invoke ||
-      window.__TAURI__?.invoke;
-    const items = [];
-    const seen = new Set();
 
-    // Recursively collect files from directories (handles nested music folders)
-    async function collectRecursive(dirPath, directory) {
-      try {
-        const res = await Filesystem.readdir({ path: dirPath, directory });
-        for (const file of res.files || []) {
-          if (file.type === "directory") {
-            // Recurse into subdirectory
-            const subPath = dirPath ? `${dirPath}/${file.name}` : file.name;
-            await collectRecursive(subPath, directory);
-          } else {
-            const cat = fileCategory(file.name);
-            if (!cat) continue;
-            const relPath = dirPath ? `${dirPath}/${file.name}` : file.name;
-            const key = `${directory}::${relPath}`;
-            if (seen.has(key)) continue;
-            seen.add(key);
-            items.push({
-              name: file.name,
-              path: relPath,
-              directory,
-              category: cat,
-              size: file.size || 0,
-              mtime: file.mtime ? new Date(file.mtime).getTime() : 0,
-              folder: null,
-            });
-          }
-        }
-      } catch (_) {}
-    }
+  activeScanPromise = (async () => {
+    try {
+      const folders = getGalleryScanFolders();
+      const tauriInvoke =
+        window.__TAURI__?.core?.invoke ||
+        window.__TAURI_INTERNALS__?.invoke ||
+        window.__TAURI__?.invoke;
+      const items = [];
+      const seen = new Set();
 
-    if (tauriInvoke) {
-      for (const folder of folders) {
+      // Recursively collect files from directories (handles nested music folders)
+      async function collectRecursive(dirPath, directory) {
         try {
-          const entries = await tauriInvoke("tauri_list_dir", { folder });
-          for (const entry of entries || []) {
-            const name = entry.name || "";
-            const cat = fileCategory(name);
-            if (!cat) continue;
-            const key = `desktop::${folder}::${name}`;
-            if (seen.has(key)) continue;
-            seen.add(key);
-            items.push({
-              name,
-              path: `${folder}/${name}`.replace(/\/+/g, "/"),
-              directory: "DESKTOP",
-              category: cat,
-              size: entry.size || 0,
-              mtime: entry.modified ? entry.modified * 1000 : 0,
-              folder: folder,
-            });
+          const res = await Filesystem.readdir({ path: dirPath, directory });
+          for (const file of res.files || []) {
+            if (file.type === "directory") {
+              const subPath = dirPath ? `${dirPath}/${file.name}` : file.name;
+              await collectRecursive(subPath, directory);
+            } else {
+              const cat = fileCategory(file.name);
+              if (!cat) continue;
+              const relPath = (dirPath ? `${dirPath}/${file.name}` : file.name).replace(/\/+/g, "/");
+              const key = relPath.toLowerCase();
+              if (seen.has(key)) continue;
+              seen.add(key);
+              items.push({
+                name: file.name,
+                path: relPath,
+                directory,
+                category: cat,
+                size: file.size || 0,
+                mtime: file.mtime ? new Date(file.mtime).getTime() : 0,
+                folder: null,
+              });
+            }
           }
         } catch (_) {}
       }
-    } else if (Filesystem) {
-      const dirs = [
-        { directory: "EXTERNAL_STORAGE" },
-        { directory: "EXTERNAL" },
-        { directory: "DOCUMENTS" },
-      ];
-      for (const folder of folders) {
-        for (const dir of dirs) {
-          // Use recursive scan to find files in nested folders (e.g. Music subfolder)
-          await collectRecursive(folder, dir.directory);
+
+      if (tauriInvoke) {
+        for (const folder of folders) {
+          try {
+            const entries = await tauriInvoke("tauri_list_dir", { folder });
+            for (const entry of entries || []) {
+              const name = entry.name || "";
+              const cat = fileCategory(name);
+              if (!cat) continue;
+              const fullPath = (entry.path || `${folder}/${name}`).replace(/\/+/g, "/");
+              const key = fullPath.toLowerCase();
+              if (seen.has(key)) continue;
+              seen.add(key);
+              items.push({
+                name,
+                path: entry.path || fullPath,
+                directory: "DESKTOP",
+                category: cat,
+                size: entry.size || 0,
+                mtime: entry.modified ? entry.modified * 1000 : 0,
+                folder: folder,
+              });
+            }
+          } catch (_) {}
+        }
+      } else if (Filesystem) {
+        const dirs = [
+          { directory: "EXTERNAL_STORAGE" },
+          { directory: "EXTERNAL" },
+          { directory: "DOCUMENTS" },
+        ];
+        for (const folder of folders) {
+          for (const dir of dirs) {
+            await collectRecursive(folder, dir.directory);
+          }
         }
       }
-    }
 
-    items.sort((a, b) => b.mtime - a.mtime || a.name.localeCompare(b.name));
-    galleryItems = items;
-    return items;
-  } finally {
-    scanInProgress = false;
-  }
+      items.sort((a, b) => b.mtime - a.mtime || a.name.localeCompare(b.name));
+      galleryItems = items;
+      const validPaths = new Set(items.map((i) => i.path));
+      for (const [cachedPath, cachedCard] of cardCache.entries()) {
+        if (!validPaths.has(cachedPath)) {
+          stopAllMedia(cachedCard);
+          cardCache.delete(cachedPath);
+        }
+      }
+      return items;
+    } finally {
+      activeScanPromise = null;
+    }
+  })();
+
+  return activeScanPromise;
 }
 
 function sortItems(items) {
@@ -207,7 +226,11 @@ function sortItems(items) {
 
 function filteredItems() {
   let items = galleryItems;
-  if (galleryFilter !== "all") items = items.filter((i) => i.category === galleryFilter);
+  if (galleryFilter !== "all") {
+    items = items.filter(
+      (i) => i.category === galleryFilter || (galleryFilter === "pdf" && i.category === "doc")
+    );
+  }
   if (galleryQuery) {
     const q = galleryQuery.toLowerCase();
     items = items.filter((i) => i.name.toLowerCase().includes(q));
@@ -251,10 +274,25 @@ function createVideoThumb(mediaUrl, name) {
   return video;
 }
 
+function createPdfThumb() {
+  const wrap = document.createElement("div");
+  wrap.className = "gallery-pdf-thumb";
+  wrap.innerHTML = `
+    <div class="gallery-pdf-icon-wrap">
+      <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor">
+        <path d="M20 2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12zM4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm12 4V9c0-.55-.45-1-1-1h-2v6h2c.55 0 1-.45 1-1v-1c0-.55-.45-1-1-1h-1v-2h1c.55 0 1-.45 1-1zm-2 1h1v1h-1v-1z"/>
+      </svg>
+    </div>
+    <span class="gallery-pdf-badge-label">PDF</span>
+  `;
+  return wrap;
+}
+
 function buildItem(item) {
   const card = document.createElement("div");
   card.className = `gallery-item cat-${item.category}`;
   card.setAttribute("data-name", item.name);
+  card.setAttribute("data-path", item.path);
 
   const mediaUrl = toLocalMediaUrl(item.path);
   const thumb = document.createElement("div");
@@ -277,6 +315,8 @@ function buildItem(item) {
     play.innerHTML =
       '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
     thumb.appendChild(play);
+  } else if (item.category === "pdf" || item.category === "doc") {
+    thumb.appendChild(createPdfThumb());
   } else {
     thumb.appendChild(galleryFallbackIcon(item.category));
   }
@@ -301,22 +341,60 @@ function renderGallery() {
   const grid = page.querySelector(".gallery-grid");
   if (!grid) return;
 
+  grid.querySelectorAll(".gallery-skeleton-card").forEach((s) => s.remove());
+
   const countEl = page.querySelector(".gallery-count");
   const items = filteredItems();
   if (countEl) {
     countEl.textContent = `${items.length} ${t("gallery-count-items")}`;
   }
 
-  grid.innerHTML = "";
   if (items.length === 0) {
+    stopAllMedia(grid);
+    grid.innerHTML = "";
     empty?.classList.remove("hidden");
     return;
   }
   empty?.classList.add("hidden");
 
+  const itemPathSet = new Set(items.map((i) => i.path));
+
+  // Remove cards not present in current filtered items
+  grid.querySelectorAll(".gallery-item").forEach((card) => {
+    const p = card.getAttribute("data-path");
+    if (!itemPathSet.has(p)) {
+      stopAllMedia(card);
+      card.remove();
+    }
+  });
+
+  // Reorder and append cards without destroying existing DOM nodes
   const frag = document.createDocumentFragment();
-  items.forEach((item) => frag.appendChild(buildItem(item)));
+  items.forEach((item) => {
+    let card = cardCache.get(item.path);
+    if (!card) {
+      card = buildItem(item);
+      cardCache.set(item.path, card);
+    }
+    frag.appendChild(card);
+  });
   grid.appendChild(frag);
+}
+
+export function renderGallerySkeleton() {
+  const page = document.getElementById("galleryPage");
+  const grid = page?.querySelector(".gallery-grid");
+  const empty = page?.querySelector(".gallery-empty");
+  if (!grid) return;
+  empty?.classList.add("hidden");
+  grid.innerHTML = `
+    <div class="gallery-skeleton-card"><div class="gallery-skeleton-thumb"></div><div class="gallery-skeleton-meta"><div class="gallery-skeleton-line title"></div><div class="gallery-skeleton-line short"></div></div></div>
+    <div class="gallery-skeleton-card"><div class="gallery-skeleton-thumb"></div><div class="gallery-skeleton-meta"><div class="gallery-skeleton-line title"></div><div class="gallery-skeleton-line short"></div></div></div>
+    <div class="gallery-skeleton-card"><div class="gallery-skeleton-thumb"></div><div class="gallery-skeleton-meta"><div class="gallery-skeleton-line title"></div><div class="gallery-skeleton-line short"></div></div></div>
+    <div class="gallery-skeleton-card"><div class="gallery-skeleton-thumb"></div><div class="gallery-skeleton-meta"><div class="gallery-skeleton-line title"></div><div class="gallery-skeleton-line short"></div></div></div>
+    <div class="gallery-skeleton-card"><div class="gallery-skeleton-thumb"></div><div class="gallery-skeleton-meta"><div class="gallery-skeleton-line title"></div><div class="gallery-skeleton-line short"></div></div></div>
+    <div class="gallery-skeleton-card"><div class="gallery-skeleton-thumb"></div><div class="gallery-skeleton-meta"><div class="gallery-skeleton-line title"></div><div class="gallery-skeleton-line short"></div></div></div>
+  `;
 }
 
 export function renderGalleryToolbar() {
@@ -326,8 +404,45 @@ export function renderGalleryToolbar() {
   chips.forEach((chip) => {
     chip.classList.toggle("active", chip.getAttribute("data-filter") === galleryFilter);
   });
-  const sortSel = page.querySelector(".gallery-sort");
-  if (sortSel) sortSel.value = gallerySort;
+  const sortText = page.querySelector("#gallerySortText");
+  const sortItems = page.querySelectorAll(".gallery-sort-item");
+  sortItems.forEach((item) => {
+    const isAct = item.getAttribute("data-value") === gallerySort;
+    item.classList.toggle("active", isAct);
+    if (isAct && sortText) {
+      sortText.textContent = item.textContent.trim();
+    }
+  });
+  const searchInput = page.querySelector(".gallery-search");
+  if (searchInput && searchInput.value !== galleryQuery) {
+    searchInput.value = galleryQuery;
+  }
+}
+
+function openFileExternal(item) {
+  const rawPath = item.path || "";
+  // 1. Android Native Bridge
+  if (window.MoriMainBridge?.openFile) {
+    try {
+      if (window.MoriMainBridge.openFile(rawPath)) return;
+    } catch (_) {}
+  }
+  // 2. Desktop Tauri
+  const tauriInvoke =
+    window.__TAURI__?.core?.invoke ||
+    window.__TAURI_INTERNALS__?.invoke ||
+    window.__TAURI__?.invoke;
+  if (tauriInvoke) {
+    try {
+      tauriInvoke("tauri_open_folder", { path: rawPath });
+      return;
+    } catch (_) {}
+  }
+  // 3. Fallback
+  const url = toLocalMediaUrl(rawPath);
+  if (url) {
+    window.open(url, "_blank");
+  }
 }
 
 function openGalleryViewer(item) {
@@ -357,14 +472,48 @@ function openGalleryViewer(item) {
     img.src = mediaUrl;
     img.referrerPolicy = "no-referrer";
     body.appendChild(img);
-  } else if (item.category === "doc") {
-    const frame = document.createElement("iframe");
-    frame.src = mediaUrl;
-    body.appendChild(frame);
+  } else if (item.category === "pdf" || item.category === "doc") {
+    const docCard = document.createElement("div");
+    docCard.className = "gallery-doc-card";
+    docCard.innerHTML = `
+      <div class="gallery-doc-icon">
+        <svg viewBox="0 0 24 24" width="48" height="48" fill="currentColor">
+          <path d="M20 2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12zM4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm12 4V9c0-.55-.45-1-1-1h-2v6h2c.55 0 1-.45 1-1v-1c0-.55-.45-1-1-1h-1v-2h1c.55 0 1-.45 1-1zm-2 1h1v1h-1v-1z"/>
+        </svg>
+      </div>
+      <h4 class="gallery-doc-title" title="${esc(item.name)}">${esc(item.name)}</h4>
+      <p class="gallery-doc-size">${formatBytes(item.size)}</p>
+      <button class="gallery-doc-open-btn" type="button">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+          <path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/>
+        </svg>
+        <span>${t("gallery-open-file") || "Open PDF"}</span>
+      </button>
+    `;
+    const openBtn = docCard.querySelector(".gallery-doc-open-btn");
+    openBtn?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      openFileExternal(item);
+    });
+    body.appendChild(docCard);
   } else if (item.category === "audio") {
     const audio = document.createElement("audio");
     audio.controls = true;
     audio.src = mediaUrl;
+    const isLoop = localStorage.getItem("mori_loop") !== "false";
+    audio.loop = isLoop;
+    if (isLoop) audio.setAttribute("loop", "");
+    audio.addEventListener("ended", () => {
+      if (localStorage.getItem("mori_loop") !== "false") {
+        audio.currentTime = 0;
+        audio.play().catch(() => {});
+      }
+    });
+    const autoPlay = localStorage.getItem("mori_autoplay") !== "false";
+    if (autoPlay) {
+      audio.autoplay = true;
+      audio.play().catch(() => {});
+    }
     body.appendChild(audio);
   } else {
     const player = createVideoPlayer(
@@ -384,6 +533,10 @@ function openGalleryViewer(item) {
     player.style.height = "100%";
     player.style.width = "100%";
     body.appendChild(player);
+    const autoPlay = localStorage.getItem("mori_autoplay") !== "false";
+    if (autoPlay && typeof player._tryAutoPlay === "function") {
+      player._tryAutoPlay();
+    }
   }
 
   const info = document.createElement("div");
@@ -414,6 +567,7 @@ function openGalleryViewer(item) {
     overlay.remove();
   };
 
+  overlay._close = close;
   header.querySelector(".gallery-viewer-back").addEventListener("click", close);
   overlay.addEventListener("click", (e) => {
     if (e.target === overlay) close();
@@ -440,17 +594,31 @@ function areItemsEqual(a, b) {
   return true;
 }
 
+export function invalidateGalleryCache() {
+  cardCache.clear();
+  galleryItems = [];
+  galleryNeedsRescan = true;
+  const page = document.getElementById("galleryPage");
+  const grid = page?.querySelector(".gallery-grid");
+  if (grid) {
+    stopAllMedia(grid);
+    grid.innerHTML = "";
+  }
+}
+
 export function initGallery() {
   const page = document.getElementById("galleryPage");
   if (!page || page._galleryInit) return;
   page._galleryInit = true;
 
   page.querySelector(".gallery-rescan")?.addEventListener("click", async () => {
-    if (scanInProgress) return;
+    if (activeScanPromise) return;
     const btn = page.querySelector(".gallery-rescan");
     if (btn) btn.classList.add("scanning");
     try {
+      cardCache.clear();
       await scanGallery(true);
+      galleryNeedsRescan = false;
       renderGallery();
       showToast(t("gallery-rescan-done"));
     } finally {
@@ -458,18 +626,21 @@ export function initGallery() {
     }
   });
 
-  // Auto-refresh when download completes
-  window.addEventListener("mori_download_ended", () => {
+  // Auto-refresh when download completes without wiping UI into skeletons
+  const handleDownloadUpdate = () => {
+    galleryNeedsRescan = true;
     const p = document.getElementById("galleryPage");
     if (p && !p.classList.contains("hidden")) {
       const prev = [...galleryItems];
       scanGallery(true).then((items) => {
+        galleryNeedsRescan = false;
         if (!areItemsEqual(prev, items)) renderGallery();
       });
-    } else {
-      galleryItems = []; // invalidate cache so next visit will rescan
     }
-  });
+  };
+
+  window.addEventListener("mori_download_ended", handleDownloadUpdate);
+  window.addEventListener("mori_file_saved", handleDownloadUpdate);
 
   page.querySelectorAll(".gallery-chip").forEach((chip) => {
     chip.addEventListener("click", () => {
@@ -479,28 +650,63 @@ export function initGallery() {
     });
   });
 
-  const sortSel = page.querySelector(".gallery-sort");
-  sortSel?.addEventListener("change", () => {
-    gallerySort = sortSel.value || "newest";
-    renderGallery();
+  const sortSelect = page.querySelector("#gallerySortSelect");
+  const sortMenu = page.querySelector("#gallerySortMenu");
+
+  sortSelect?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    sortMenu?.classList.toggle("hidden");
+    sortSelect.classList.toggle("active", !sortMenu?.classList.contains("hidden"));
+  });
+
+  page.querySelectorAll(".gallery-sort-item").forEach((item) => {
+    item.addEventListener("click", (e) => {
+      e.stopPropagation();
+      gallerySort = item.getAttribute("data-value") || "newest";
+      sortMenu?.classList.add("hidden");
+      sortSelect?.classList.remove("active");
+      renderGalleryToolbar();
+      renderGallery();
+    });
+  });
+
+  document.addEventListener("click", () => {
+    if (sortMenu && !sortMenu.classList.contains("hidden")) {
+      sortMenu.classList.add("hidden");
+      sortSelect?.classList.remove("active");
+    }
   });
 
   const searchInput = page.querySelector(".gallery-search");
   searchInput?.addEventListener("input", () => {
-    galleryQuery = searchInput.value.trim();
-    renderGallery();
+    clearTimeout(searchDebounceTimer);
+    searchDebounceTimer = setTimeout(() => {
+      galleryQuery = searchInput.value.trim();
+      renderGallery();
+    }, 150);
   });
 }
 
 export function refreshGalleryPage() {
   initGallery();
   renderGalleryToolbar();
-  if (galleryItems.length === 0) {
-    scanGallery(true).then(() => renderGallery());
+  const page = document.getElementById("galleryPage");
+  const grid = page?.querySelector(".gallery-grid");
+  const hasRealCards = grid && grid.querySelector(".gallery-item");
+
+  if (galleryItems.length === 0 && !hasRealCards) {
+    renderGallerySkeleton();
+    scanGallery(true).then(() => {
+      galleryNeedsRescan = false;
+      renderGallery();
+    });
   } else {
-    renderGallery();
+    if (!hasRealCards) {
+      renderGallery();
+    }
     const prev = [...galleryItems];
-    scanGallery(true).then((items) => {
+    scanGallery(galleryNeedsRescan).then((items) => {
+      galleryNeedsRescan = false;
       if (!areItemsEqual(prev, items)) {
         renderGallery();
       }

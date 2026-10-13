@@ -377,7 +377,10 @@ export async function showModal(item, onRedownload) {
           if (playerContainer && typeof playerContainer._tryAutoPlay === "function") {
             playerContainer._tryAutoPlay();
           } else if (media) {
-            media.loop = localStorage.getItem("mori_loop") !== "false";
+            const isLoop = localStorage.getItem("mori_loop") !== "false";
+            media.loop = isLoop;
+            if (isLoop) media.setAttribute("loop", "");
+            else media.removeAttribute("loop");
             if (localStorage.getItem("mori_autoplay") !== "false") {
               if (media.paused) {
                 const playPromise = media.play();
