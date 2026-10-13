@@ -65,26 +65,35 @@ export function createVideoPlayer(dl, index, resultThumbnail) {
   const isDesktop =
     !!tauriConvertFileSrcCheck && !window.Capacitor?.isNativePlatform?.();
 
-  // Use <audio> for audio-only files on Desktop for better WKWebView compatibility
-  const video =
-    isAudioOnly && isDesktop
-      ? (() => {
-          const audio = document.createElement("audio");
-          audio.setAttribute("referrerpolicy", "no-referrer");
-          audio.controls = false;
-          audio.style.width = "100%";
-          audio.style.maxWidth = "340px";
-          audio.style.display = "block";
-          // Give player container a music-player look for audio
-          playerContainer.style.backgroundColor = "rgba(18,18,18,0.97)";
-          playerContainer.style.minHeight = "120px";
-          return audio;
-        })()
-      : (() => {
-          const v = document.createElement("video");
-          v.setAttribute("referrerpolicy", "no-referrer");
-          return v;
-        })();
+  if (isAudioOnly) {
+    playerContainer.classList.add("is-audio");
+    playerContainer.style.backgroundColor = "var(--surface)";
+    const audioPlaceholder = document.createElement("div");
+    audioPlaceholder.className = "mori-player-audio-placeholder";
+    audioPlaceholder.innerHTML = `
+      <div class="mori-player-audio-icon">
+        <svg viewBox="0 0 24 24" width="44" height="44" fill="currentColor">
+          <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
+        </svg>
+      </div>
+    `;
+    playerContainer.appendChild(audioPlaceholder);
+  }
+
+  // Use <audio> for audio-only files on all platforms to prevent video placeholder artifacts
+  const video = isAudioOnly
+    ? (() => {
+        const audio = document.createElement("audio");
+        audio.setAttribute("referrerpolicy", "no-referrer");
+        audio.controls = false;
+        audio.style.display = "none";
+        return audio;
+      })()
+    : (() => {
+        const v = document.createElement("video");
+        v.setAttribute("referrerpolicy", "no-referrer");
+        return v;
+      })();
 
   const isBilibili =
     /bilibili|bilivideo|akamaized/i.test(videoUrl) ||

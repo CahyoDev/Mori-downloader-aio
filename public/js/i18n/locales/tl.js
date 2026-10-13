@@ -255,6 +255,8 @@ export default {
   "gallery-filter-image": "Larawan",
   "gallery-filter-video": "Video",
   "gallery-open-file": "Buksan ang PDF",
+  "gallery-pdf-loading": "Ikinakarga ang PDF...",
+  "gallery-pdf-pages": "mga pahina",
   "gallery-rescan-done": "Na-rescan ang gallery",
   "gallery-search-placeholder": "Maghanap ng mga file...",
   "gallery-sort-largest": "Pinakamalaki",

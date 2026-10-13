@@ -255,6 +255,8 @@ export default {
   "gallery-filter-image": "फ़ोटो",
   "gallery-filter-video": "वीडियो",
   "gallery-open-file": "PDF खोलें",
+  "gallery-pdf-loading": "PDF लोड हो रहा है...",
+  "gallery-pdf-pages": "पेज",
   "gallery-rescan-done": "गैलरी पुनः स्कैन की गई",
   "gallery-search-placeholder": "फ़ाइलें खोजें...",
   "gallery-sort-largest": "सबसे बड़ा",

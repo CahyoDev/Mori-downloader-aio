@@ -1,5 +1,10 @@
 // gallery.js — scan Mori download folders into a media gallery
-import { Filesystem, pauseAllMedia, stopAllMedia, showToast } from "../utils/index.js";
+import {
+  Filesystem,
+  pauseAllMedia,
+  stopAllMedia,
+  showToast,
+} from "../utils/index.js";
 import { t } from "../i18n/index.js";
 import { createVideoPlayer } from "../components/player.js";
 
@@ -135,7 +140,9 @@ export async function scanGallery(force = false) {
             } else {
               const cat = fileCategory(file.name);
               if (!cat) continue;
-              const relPath = (dirPath ? `${dirPath}/${file.name}` : file.name).replace(/\/+/g, "/");
+              const relPath = (
+                dirPath ? `${dirPath}/${file.name}` : file.name
+              ).replace(/\/+/g, "/");
               const key = relPath.toLowerCase();
               if (seen.has(key)) continue;
               seen.add(key);
@@ -161,7 +168,10 @@ export async function scanGallery(force = false) {
               const name = entry.name || "";
               const cat = fileCategory(name);
               if (!cat) continue;
-              const fullPath = (entry.path || `${folder}/${name}`).replace(/\/+/g, "/");
+              const fullPath = (entry.path || `${folder}/${name}`).replace(
+                /\/+/g,
+                "/",
+              );
               const key = fullPath.toLowerCase();
               if (seen.has(key)) continue;
               seen.add(key);
@@ -228,7 +238,9 @@ function filteredItems() {
   let items = galleryItems;
   if (galleryFilter !== "all") {
     items = items.filter(
-      (i) => i.category === galleryFilter || (galleryFilter === "pdf" && i.category === "doc")
+      (i) =>
+        i.category === galleryFilter ||
+        (galleryFilter === "pdf" && i.category === "doc"),
     );
   }
   if (galleryQuery) {
@@ -260,16 +272,23 @@ function createVideoThumb(mediaUrl, name) {
   video.preload = "metadata";
   video.setAttribute("playsinline", "");
   video.setAttribute("aria-label", name || "video");
-  const canFragment = /^(https?|file|asset|tauri):/i.test(mediaUrl) || mediaUrl.startsWith("/");
+  video.style.opacity = "0";
+  const canFragment =
+    /^(https?|file|asset|tauri):/i.test(mediaUrl) || mediaUrl.startsWith("/");
   video.src = canFragment ? `${mediaUrl}#t=1` : mediaUrl;
+  const show = () => {
+    video.style.opacity = "1";
+  };
   video.addEventListener("loadeddata", () => {
     try {
       const mark = Math.min(1.5, (video.duration || 2) * 0.15);
       if (mark > 0.2 && video.currentTime < mark) video.currentTime = mark;
     } catch (_) {}
+    show();
   });
+  video.addEventListener("seeked", show);
   video.addEventListener("error", () => {
-    video.replaceWith(galleryFallbackIcon("video"));
+    video.remove();
   });
   return video;
 }
@@ -305,8 +324,16 @@ function buildItem(item) {
     const img = document.createElement("img");
     img.loading = "lazy";
     img.referrerPolicy = "no-referrer";
-    img.src = mediaUrl;
     img.alt = item.name;
+    img.style.opacity = "0";
+    img.onload = () => {
+      img.style.opacity = "1";
+    };
+    img.onerror = () => {
+      img.remove();
+    };
+    img.src = mediaUrl;
+    if (img.complete && img.naturalWidth > 0) img.style.opacity = "1";
     thumb.appendChild(img);
   } else if (item.category === "video") {
     thumb.appendChild(createVideoThumb(mediaUrl, item.name));
@@ -402,7 +429,10 @@ export function renderGalleryToolbar() {
   if (!page) return;
   const chips = page.querySelectorAll(".gallery-chip");
   chips.forEach((chip) => {
-    chip.classList.toggle("active", chip.getAttribute("data-filter") === galleryFilter);
+    chip.classList.toggle(
+      "active",
+      chip.getAttribute("data-filter") === galleryFilter,
+    );
   });
   const sortText = page.querySelector("#gallerySortText");
   const sortItems = page.querySelectorAll(".gallery-sort-item");
@@ -445,6 +475,233 @@ function openFileExternal(item) {
   }
 }
 
+async function fetchPdfBytes(item) {
+  const tauriInvoke =
+    window.__TAURI__?.core?.invoke ||
+    window.__TAURI_INTERNALS__?.invoke ||
+    window.__TAURI__?.invoke;
+  if (tauriInvoke && item.path) {
+    try {
+      const bytes = await tauriInvoke("tauri_read_file_bytes", {
+        path: item.path,
+      });
+      if (bytes && bytes.length > 0) return new Uint8Array(bytes);
+    } catch (_) {}
+  }
+
+  const url = toLocalMediaUrl(item.path);
+  if (url) {
+    try {
+      const res = await fetch(url);
+      if (res.ok) {
+        const buf = await res.arrayBuffer();
+        if (buf && buf.byteLength > 0) return new Uint8Array(buf);
+      }
+    } catch (_) {}
+  }
+
+  if (
+    window.Capacitor?.isNativePlatform?.() &&
+    window.Capacitor.Plugins?.Filesystem
+  ) {
+    const { Filesystem } = window.Capacitor.Plugins;
+    let clean = item.path
+      .replace(/^.*\/storage\/emulated\/0\//, "")
+      .replace(/^\//, "");
+    try {
+      clean = decodeURIComponent(clean);
+    } catch (_) {}
+    const dirs = ["EXTERNAL_STORAGE", "DOCUMENTS", "EXTERNAL"];
+    for (const d of dirs) {
+      try {
+        const res = await Filesystem.readFile({ path: clean, directory: d });
+        if (res && res.data) {
+          const bin = atob(res.data);
+          const len = bin.length;
+          const u8 = new Uint8Array(len);
+          for (let i = 0; i < len; i++) u8[i] = bin.charCodeAt(i);
+          return u8;
+        }
+      } catch (_) {}
+    }
+  }
+
+  throw new Error("Unable to read PDF file data");
+}
+
+function renderPdfInViewer(body, item, overlay, header) {
+  body.classList.add("pdf-mode");
+
+  const extBtn = document.createElement("button");
+  extBtn.className = "gallery-viewer-external-btn";
+  extBtn.setAttribute("type", "button");
+  extBtn.setAttribute(
+    "title",
+    t("gallery-open-file") || "Open PDF in external app",
+  );
+  extBtn.innerHTML = `
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+      <path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/>
+    </svg>
+  `;
+  extBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    openFileExternal(item);
+  });
+  header.appendChild(extBtn);
+
+  const container = document.createElement("div");
+  container.className = "gallery-pdf-viewer";
+  container.innerHTML = `
+    <div class="gallery-pdf-loading">
+      <div class="gallery-pdf-spinner"></div>
+      <span>${t("gallery-pdf-loading") || "Loading PDF..."}</span>
+    </div>
+  `;
+  body.appendChild(container);
+
+  let isDestroyed = false;
+  let pdfDoc = null;
+  let observer = null;
+
+  overlay._pdfCleanup = () => {
+    isDestroyed = true;
+    if (observer) {
+      observer.disconnect();
+      observer = null;
+    }
+    if (pdfDoc) {
+      try {
+        pdfDoc.destroy();
+      } catch (_) {}
+      pdfDoc = null;
+    }
+  };
+
+  (async () => {
+    try {
+      if (!window.pdfjsLib) {
+        throw new Error("PDF renderer not available");
+      }
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+        "js/vendor/pdf.worker.min.js";
+
+      const bytes = await fetchPdfBytes(item);
+      if (isDestroyed) return;
+
+      const loadingTask = window.pdfjsLib.getDocument({
+        data: bytes,
+        cMapUrl: "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/cmaps/",
+        cMapPacked: true,
+      });
+
+      pdfDoc = await loadingTask.promise;
+      if (isDestroyed) {
+        pdfDoc.destroy();
+        return;
+      }
+
+      container.innerHTML = "";
+
+      const subTitle = header.querySelector(".gallery-viewer-title p");
+      if (subTitle) {
+        subTitle.textContent = `${pdfDoc.numPages} ${t("gallery-pdf-pages") || "pages"} · ${formatBytes(item.size)}`;
+      }
+
+      for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
+        const wrap = document.createElement("div");
+        wrap.className = "gallery-pdf-page-wrap";
+        wrap.dataset.page = String(pageNum);
+
+        const badge = document.createElement("div");
+        badge.className = "gallery-pdf-page-indicator";
+        badge.textContent = `${pageNum} / ${pdfDoc.numPages}`;
+        wrap.appendChild(badge);
+
+        const canvas = document.createElement("canvas");
+        canvas.className = "gallery-pdf-canvas";
+        wrap.appendChild(canvas);
+
+        container.appendChild(wrap);
+      }
+
+      const renderPage = async (pageNum, canvas, wrap) => {
+        if (canvas._rendered || canvas._rendering || isDestroyed) return;
+        canvas._rendering = true;
+        try {
+          const page = await pdfDoc.getPage(pageNum);
+          if (isDestroyed) return;
+
+          const containerWidth =
+            Math.min(container.clientWidth - 24, 680) || 360;
+          const unscaledViewport = page.getViewport({ scale: 1 });
+          const scale = containerWidth / unscaledViewport.width;
+          const dpr = Math.min(window.devicePixelRatio || 1, 2);
+          const viewport = page.getViewport({ scale: scale * dpr });
+
+          canvas.width = viewport.width;
+          canvas.height = viewport.height;
+          canvas.style.width = `${containerWidth}px`;
+          canvas.style.height = `${unscaledViewport.height * scale}px`;
+          wrap.style.minHeight = `${unscaledViewport.height * scale}px`;
+
+          const ctx = canvas.getContext("2d", { alpha: false });
+          const renderContext = {
+            canvasContext: ctx,
+            viewport: viewport,
+          };
+          await page.render(renderContext).promise;
+          canvas._rendered = true;
+        } catch (err) {
+          if (!isDestroyed) console.warn(`Render page ${pageNum} error:`, err);
+        } finally {
+          canvas._rendering = false;
+        }
+      };
+
+      observer = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              const wrap = entry.target;
+              const pNum = parseInt(wrap.dataset.page, 10);
+              const c = wrap.querySelector("canvas");
+              if (c) renderPage(pNum, c, wrap);
+            }
+          });
+        },
+        { root: container, rootMargin: "350px 0px" },
+      );
+
+      container.querySelectorAll(".gallery-pdf-page-wrap").forEach((wrap) => {
+        observer.observe(wrap);
+      });
+    } catch (err) {
+      if (isDestroyed) return;
+      console.error("PDF viewer load failed:", err);
+      container.innerHTML = `
+        <div class="gallery-doc-card">
+          <div class="gallery-doc-icon">
+            <svg viewBox="0 0 24 24" width="48" height="48" fill="currentColor">
+              <path d="M20 2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12zM4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm12 4V9c0-.55-.45-1-1-1h-2v6h2c.55 0 1-.45 1-1v-1c0-.55-.45-1-1-1h-1v-2h1c.55 0 1-.45 1-1zm-2 1h1v1h-1v-1z"/>
+            </svg>
+          </div>
+          <h4 class="gallery-doc-title" title="${esc(item.name)}">${esc(item.name)}</h4>
+          <p class="gallery-doc-size">${formatBytes(item.size)}</p>
+          <button class="gallery-doc-open-btn" type="button">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+              <path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/>
+            </svg>
+            <span>${t("gallery-open-file") || "Open in External App"}</span>
+          </button>
+        </div>
+      `;
+      const btn = container.querySelector(".gallery-doc-open-btn");
+      btn?.addEventListener("click", () => openFileExternal(item));
+    }
+  })();
+}
+
 function openGalleryViewer(item) {
   pauseAllMedia(document);
   const overlay = document.createElement("div");
@@ -473,55 +730,17 @@ function openGalleryViewer(item) {
     img.referrerPolicy = "no-referrer";
     body.appendChild(img);
   } else if (item.category === "pdf" || item.category === "doc") {
-    const docCard = document.createElement("div");
-    docCard.className = "gallery-doc-card";
-    docCard.innerHTML = `
-      <div class="gallery-doc-icon">
-        <svg viewBox="0 0 24 24" width="48" height="48" fill="currentColor">
-          <path d="M20 2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12zM4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm12 4V9c0-.55-.45-1-1-1h-2v6h2c.55 0 1-.45 1-1v-1c0-.55-.45-1-1-1h-1v-2h1c.55 0 1-.45 1-1zm-2 1h1v1h-1v-1z"/>
-        </svg>
-      </div>
-      <h4 class="gallery-doc-title" title="${esc(item.name)}">${esc(item.name)}</h4>
-      <p class="gallery-doc-size">${formatBytes(item.size)}</p>
-      <button class="gallery-doc-open-btn" type="button">
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-          <path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/>
-        </svg>
-        <span>${t("gallery-open-file") || "Open PDF"}</span>
-      </button>
-    `;
-    const openBtn = docCard.querySelector(".gallery-doc-open-btn");
-    openBtn?.addEventListener("click", (e) => {
-      e.stopPropagation();
-      openFileExternal(item);
-    });
-    body.appendChild(docCard);
-  } else if (item.category === "audio") {
-    const audio = document.createElement("audio");
-    audio.controls = true;
-    audio.src = mediaUrl;
-    const isLoop = localStorage.getItem("mori_loop") !== "false";
-    audio.loop = isLoop;
-    if (isLoop) audio.setAttribute("loop", "");
-    audio.addEventListener("ended", () => {
-      if (localStorage.getItem("mori_loop") !== "false") {
-        audio.currentTime = 0;
-        audio.play().catch(() => {});
-      }
-    });
-    const autoPlay = localStorage.getItem("mori_autoplay") !== "false";
-    if (autoPlay) {
-      audio.autoplay = true;
-      audio.play().catch(() => {});
-    }
-    body.appendChild(audio);
+    renderPdfInViewer(body, item, overlay, header);
   } else {
+    if (item.category === "audio") {
+      body.classList.add("audio-mode");
+    }
     const player = createVideoPlayer(
       {
         url: mediaUrl,
         rawUri: item.path,
         rawPath: item.path,
-        type: "VIDEO",
+        type: item.category === "audio" ? "AUDIO" : "VIDEO",
         isLocal: true,
         filename: item.name,
         title: item.name,
@@ -552,6 +771,7 @@ function openGalleryViewer(item) {
   document.body.appendChild(overlay);
 
   const close = () => {
+    overlay._pdfCleanup?.();
     pauseAllMedia(overlay);
     const player = overlay.querySelector(".mori-player-container");
     if (player && typeof player._cleanup === "function") player._cleanup();
@@ -579,6 +799,7 @@ function openGalleryViewer(item) {
   overlay._onKeyRemove = () => document.removeEventListener("keydown", onKey);
   const origRemove = overlay.remove.bind(overlay);
   overlay.remove = () => {
+    overlay._pdfCleanup?.();
     overlay._onKeyRemove?.();
     origRemove();
   };
@@ -587,7 +808,11 @@ function openGalleryViewer(item) {
 function areItemsEqual(a, b) {
   if (!a || !b || a.length !== b.length) return false;
   for (let i = 0; i < a.length; i++) {
-    if (a[i].path !== b[i].path || a[i].size !== b[i].size || a[i].mtime !== b[i].mtime) {
+    if (
+      a[i].path !== b[i].path ||
+      a[i].size !== b[i].size ||
+      a[i].mtime !== b[i].mtime
+    ) {
       return false;
     }
   }
@@ -641,6 +866,7 @@ export function initGallery() {
 
   window.addEventListener("mori_download_ended", handleDownloadUpdate);
   window.addEventListener("mori_file_saved", handleDownloadUpdate);
+  window.addEventListener("mori_app_resumed", handleDownloadUpdate);
 
   page.querySelectorAll(".gallery-chip").forEach((chip) => {
     chip.addEventListener("click", () => {
@@ -656,7 +882,10 @@ export function initGallery() {
   sortSelect?.addEventListener("click", (e) => {
     e.stopPropagation();
     sortMenu?.classList.toggle("hidden");
-    sortSelect.classList.toggle("active", !sortMenu?.classList.contains("hidden"));
+    sortSelect.classList.toggle(
+      "active",
+      !sortMenu?.classList.contains("hidden"),
+    );
   });
 
   page.querySelectorAll(".gallery-sort-item").forEach((item) => {
@@ -705,7 +934,7 @@ export function refreshGalleryPage() {
       renderGallery();
     }
     const prev = [...galleryItems];
-    scanGallery(galleryNeedsRescan).then((items) => {
+    scanGallery(true).then((items) => {
       galleryNeedsRescan = false;
       if (!areItemsEqual(prev, items)) {
         renderGallery();

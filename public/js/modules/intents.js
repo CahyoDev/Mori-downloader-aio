@@ -219,7 +219,7 @@ if (App && typeof App.addListener === "function") {
   App.addListener("appStateChange", ({ isActive }) => {
     if (isActive) {
       try {
-        renderHistory(onHistoryItemClick, onHistoryDeleteClick);
+        checkAndMergePendingHistory();
         updateGreeting();
       } catch (_) {}
 
@@ -303,9 +303,12 @@ export function mergePendingHistorySync() {
 }
 
 export function checkAndMergePendingHistory() {
-  mergePendingHistorySync();
+  const merged = mergePendingHistorySync();
   if (typeof renderHistory === "function") {
     renderHistory(onHistoryItemClick, onHistoryDeleteClick);
+  }
+  if (merged) {
+    window.dispatchEvent(new CustomEvent("mori_download_ended"));
   }
 }
 

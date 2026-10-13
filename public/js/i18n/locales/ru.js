@@ -255,6 +255,8 @@ export default {
   "gallery-filter-image": "Фото",
   "gallery-filter-video": "Видео",
   "gallery-open-file": "Открыть PDF",
+  "gallery-pdf-loading": "Загрузка PDF...",
+  "gallery-pdf-pages": "стр.",
   "gallery-rescan-done": "Галерея пересканирована",
   "gallery-search-placeholder": "Поиск файлов...",
   "gallery-sort-largest": "Сначала большие",

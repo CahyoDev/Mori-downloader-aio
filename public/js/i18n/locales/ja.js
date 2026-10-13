@@ -274,6 +274,8 @@ export default {
   "gallery-filter-image": "写真",
   "gallery-filter-video": "動画",
   "gallery-open-file": "PDFを開く",
+  "gallery-pdf-loading": "PDFを読み込み中...",
+  "gallery-pdf-pages": "ページ",
   "gallery-rescan-done": "ギャラリーを再スキャンしました",
   "gallery-search-placeholder": "ファイルを検索...",
   "gallery-sort-largest": "サイズ大",

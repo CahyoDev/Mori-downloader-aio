@@ -242,6 +242,21 @@
   );
   background-size: 200% 100%;
   animation: skeleton-loading 1.5s infinite linear;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.gallery-skeleton-thumb::before {
+  content: "MORI";
+  position: absolute;
+  font-weight: 800;
+  letter-spacing: 6px;
+  font-size: 1.35rem;
+  color: var(--text-main);
+  opacity: 0.12;
+  pointer-events: none;
 }
 
 .gallery-skeleton-meta {
@@ -338,11 +353,23 @@
 .gallery-thumb {
   position: relative;
   aspect-ratio: 4 / 5;
-  background: rgba(var(--primary-rgb), 0.06);
+  background-color: var(--surface);
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
+}
+
+.gallery-thumb::before {
+  content: "MORI";
+  position: absolute;
+  font-weight: 800;
+  letter-spacing: 6px;
+  font-size: 1.35rem;
+  color: var(--text-main);
+  opacity: 0.12;
+  pointer-events: none;
+  z-index: 0;
 }
 
 .gallery-thumb img,
@@ -351,7 +378,9 @@
   height: 100%;
   object-fit: cover;
   display: block;
-  transition: transform 0.35s ease;
+  transition: transform 0.35s ease, opacity 0.25s ease;
+  position: relative;
+  z-index: 1;
 }
 
 .gallery-item:hover .gallery-thumb img,
@@ -363,12 +392,14 @@
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  background: rgba(var(--primary-rgb), 0.12);
+  background: rgba(var(--primary-rgb), 0.08);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--text-secondary);
+  color: var(--text-main);
   opacity: 0.85;
+  position: relative;
+  z-index: 1;
 }
 
 .gallery-pdf-thumb {
@@ -379,7 +410,11 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  background: linear-gradient(135deg, rgba(239, 68, 68, 0.08), rgba(220, 38, 38, 0.16));
+  background: linear-gradient(
+    135deg,
+    rgba(239, 68, 68, 0.08),
+    rgba(220, 38, 38, 0.16)
+  );
   color: #ef4444;
 }
 
@@ -420,7 +455,9 @@
   justify-content: center;
   padding-left: 3px;
   pointer-events: none;
-  transition: transform 0.25s ease, background 0.25s ease;
+  transition:
+    transform 0.25s ease,
+    background 0.25s ease;
 }
 
 .gallery-item:hover .gallery-play-badge {
@@ -561,12 +598,107 @@
   max-width: 420px;
 }
 
-.gallery-viewer-body iframe {
+.gallery-viewer-body.pdf-mode {
+  padding: 0;
+  display: block;
+  overflow: hidden;
+  background: var(--bg-color, #0f1117);
+}
+
+.gallery-pdf-viewer {
   width: 100%;
   height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 8px 40px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.gallery-pdf-page-wrap {
+  position: relative;
+  width: 100%;
+  max-width: 680px;
+  background: #ffffff;
+  border-radius: var(--radius-lg, 12px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow: hidden;
+  min-height: 240px;
+}
+
+.gallery-pdf-canvas {
+  width: 100% !important;
+  height: auto !important;
+  display: block;
+}
+
+.gallery-pdf-page-indicator {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 12px;
+  backdrop-filter: blur(4px);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.gallery-pdf-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  padding: 60px 20px;
+  width: 100%;
+}
+
+.gallery-pdf-spinner {
+  width: 38px;
+  height: 38px;
+  border: 3px solid rgba(255, 255, 255, 0.15);
+  border-top-color: var(--color-primary, #6366f1);
+  border-radius: 50%;
+  animation: pdfSpin 0.8s linear infinite;
+}
+
+@keyframes pdfSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.gallery-viewer-external-btn {
+  background: transparent;
   border: none;
-  border-radius: var(--radius-xl);
-  background: #fff;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  margin-left: 4px;
+  transition:
+    color 0.2s,
+    background-color 0.2s;
+}
+
+.gallery-viewer-external-btn:hover {
+  color: var(--text-main);
+  background: var(--surface);
 }
 
 .gallery-doc-card {
@@ -640,6 +772,15 @@
   border-radius: var(--radius-xl);
   overflow: hidden;
   position: relative;
+}
+
+.gallery-viewer-body .mori-player-container.is-audio {
+  background: var(--surface) !important;
+  border: 1px solid rgba(var(--primary-rgb), 0.1);
+}
+
+.gallery-viewer-body.audio-mode {
+  background: var(--bg-color);
 }
 
 .gallery-viewer-body .mori-player-container video {

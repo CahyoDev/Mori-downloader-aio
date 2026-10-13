@@ -259,6 +259,8 @@ export default {
   "gallery-filter-image": "Photo",
   "gallery-filter-video": "Video",
   "gallery-open-file": "Open PDF",
+  "gallery-pdf-loading": "Loading PDF...",
+  "gallery-pdf-pages": "pages",
   "gallery-rescan-done": "Gallery rescanned",
   "gallery-search-placeholder": "Search files...",
   "gallery-sort-largest": "Largest",

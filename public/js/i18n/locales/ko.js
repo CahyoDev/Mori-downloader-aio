@@ -255,6 +255,8 @@ export default {
   "gallery-filter-image": "사진",
   "gallery-filter-video": "동영상",
   "gallery-open-file": "PDF 열기",
+  "gallery-pdf-loading": "PDF 로드 중...",
+  "gallery-pdf-pages": "페이지",
   "gallery-rescan-done": "갤러리 재스캔 완료",
   "gallery-search-placeholder": "파일 검색...",
   "gallery-sort-largest": "크기 큰 순",

@@ -259,6 +259,8 @@ export default {
   "gallery-filter-image": "图片",
   "gallery-filter-video": "视频",
   "gallery-open-file": "打开 PDF",
+  "gallery-pdf-loading": "正在加载 PDF...",
+  "gallery-pdf-pages": "页",
   "gallery-rescan-done": "已重新扫描图库",
   "gallery-search-placeholder": "搜索文件...",
   "gallery-sort-largest": "最大",

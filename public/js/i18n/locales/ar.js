@@ -255,6 +255,8 @@ export default {
   "gallery-filter-image": "صور",
   "gallery-filter-video": "فيديو",
   "gallery-open-file": "فتح PDF",
+  "gallery-pdf-loading": "جارٍ تحميل PDF...",
+  "gallery-pdf-pages": "صفحات",
   "gallery-rescan-done": "تمت إعادة فحص المعرض",
   "gallery-search-placeholder": "البحث في الملفات...",
   "gallery-sort-largest": "الأكبر",

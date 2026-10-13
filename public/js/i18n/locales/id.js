@@ -259,6 +259,8 @@ export default {
   "gallery-filter-image": "Foto",
   "gallery-filter-video": "Video",
   "gallery-open-file": "Buka PDF",
+  "gallery-pdf-loading": "Memuat PDF...",
+  "gallery-pdf-pages": "halaman",
   "gallery-rescan-done": "Galeri berhasil dipindai ulang",
   "gallery-search-placeholder": "Cari file...",
   "gallery-sort-largest": "Terbesar",
