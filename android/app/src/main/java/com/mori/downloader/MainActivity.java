@@ -484,10 +484,10 @@ public class MainActivity extends BridgeActivity {
                 isTargetPortrait = (videoHeight >= videoWidth);
             }
 
-            int dstWidth = 512;
-            int dstHeight = 512;
+            int dstWidth = 640;
+            int dstHeight = 640;
             if (videoWidth > 0 && videoHeight > 0) {
-                int maxDim = 512;
+                int maxDim = 640;
                 if (videoWidth >= videoHeight) {
                     dstWidth = maxDim;
                     dstHeight = Math.max(1, (videoHeight * maxDim) / videoWidth);
@@ -539,16 +539,16 @@ public class MainActivity extends BridgeActivity {
                     } catch (Throwable ignored) {}
                 }
 
-                if (bitmap.getWidth() > 120 || bitmap.getHeight() > 120) {
+                if (bitmap.getWidth() > 640 || bitmap.getHeight() > 640) {
                     int bw = bitmap.getWidth();
                     int bh = bitmap.getHeight();
                     int scaledW, scaledH;
                     if (bw >= bh) {
-                        scaledW = 120;
-                        scaledH = Math.max(1, (bh * 120) / bw);
+                        scaledW = 640;
+                        scaledH = Math.max(1, (bh * 640) / bw);
                     } else {
-                        scaledH = 120;
-                        scaledW = Math.max(1, (bw * 120) / bh);
+                        scaledH = 640;
+                        scaledW = Math.max(1, (bw * 640) / bh);
                     }
                     try {
                         Bitmap scaled = Bitmap.createScaledBitmap(bitmap, scaledW, scaledH, true);
@@ -583,7 +583,7 @@ public class MainActivity extends BridgeActivity {
                     if (bitmap == null && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
                         try {
                             bitmap = getApplicationContext().getContentResolver().loadThumbnail(
-                                contentUri, new Size(120, 120), null);
+                                contentUri, new Size(640, 640), null);
                         } catch (Throwable ignored) {}
                     }
                 } else {
@@ -623,9 +623,9 @@ public class MainActivity extends BridgeActivity {
                         if (bitmap == null) {
                             try {
                                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-                                    bitmap = ThumbnailUtils.createVideoThumbnail(f, new Size(120, 120), null);
+                                    bitmap = ThumbnailUtils.createVideoThumbnail(f, new Size(640, 640), null);
                                 } else {
-                                    bitmap = ThumbnailUtils.createVideoThumbnail(f.getAbsolutePath(), MediaStore.Images.Thumbnails.MICRO_KIND);
+                                    bitmap = ThumbnailUtils.createVideoThumbnail(f.getAbsolutePath(), MediaStore.Images.Thumbnails.MINI_KIND);
                                 }
                             } catch (Throwable ignored) {
                                 bitmap = null;
@@ -635,8 +635,8 @@ public class MainActivity extends BridgeActivity {
                 }
 
                 if (bitmap != null) {
-                    if (bitmap.getWidth() > 120 || bitmap.getHeight() > 120) {
-                        float scale = 120.0f / Math.max(bitmap.getWidth(), bitmap.getHeight());
+                    if (bitmap.getWidth() > 640 || bitmap.getHeight() > 640) {
+                        float scale = 640.0f / Math.max(bitmap.getWidth(), bitmap.getHeight());
                         int sw = Math.max(1, Math.round(bitmap.getWidth() * scale));
                         int sh = Math.max(1, Math.round(bitmap.getHeight() * scale));
                         Bitmap scaled = Bitmap.createScaledBitmap(bitmap, sw, sh, true);
@@ -646,7 +646,7 @@ public class MainActivity extends BridgeActivity {
                         }
                     }
                     ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                    bitmap.compress(Bitmap.CompressFormat.JPEG, 60, baos);
+                    bitmap.compress(Bitmap.CompressFormat.JPEG, 85, baos);
                     byte[] bytes = baos.toByteArray();
                     bitmap.recycle();
                     return "data:image/jpeg;base64," + Base64.encodeToString(bytes, Base64.NO_WRAP);
@@ -711,6 +711,53 @@ public class MainActivity extends BridgeActivity {
                     intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                     startActivity(intent);
                     return true;
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            return false;
+        }
+
+        @JavascriptInterface
+        public boolean deleteFile(String rawPath) {
+            try {
+                if (rawPath == null || rawPath.isEmpty()) return false;
+                String cleanPath = rawPath;
+                if (cleanPath.startsWith("file://")) {
+                    cleanPath = cleanPath.substring(7);
+                }
+                cleanPath = URLDecoder.decode(cleanPath, "UTF-8");
+                File f = new File(cleanPath);
+                if (!f.isAbsolute()) {
+                    f = new File(Environment.getExternalStorageDirectory(), cleanPath.replaceFirst("^/+", ""));
+                }
+                if (!f.exists()) {
+                    File d1 = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), cleanPath.replaceFirst("^/+", ""));
+                    if (d1.exists()) f = d1;
+                }
+                if (!f.exists()) {
+                    File d2 = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES), cleanPath.replaceFirst("^/+", ""));
+                    if (d2.exists()) f = d2;
+                }
+                if (!f.exists()) {
+                    File d3 = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), cleanPath.replaceFirst("^/+", ""));
+                    if (d3.exists()) f = d3;
+                }
+                if (!f.exists()) {
+                    File d4 = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS), cleanPath.replaceFirst("^/+", ""));
+                    if (d4.exists()) f = d4;
+                }
+                if (!f.exists()) {
+                    File d5 = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC), cleanPath.replaceFirst("^/+", ""));
+                    if (d5.exists()) f = d5;
+                }
+                if (f.exists()) {
+                    String abs = f.getAbsolutePath();
+                    boolean ok = f.delete();
+                    try {
+                        MediaScannerConnection.scanFile(MainActivity.this, new String[]{abs}, null, null);
+                    } catch (Throwable ignored) {}
+                    return ok;
                 }
             } catch (Exception e) {
                 e.printStackTrace();

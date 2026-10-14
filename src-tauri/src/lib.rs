@@ -546,6 +546,17 @@ async fn tauri_list_dir(folder: Option<String>) -> Result<Vec<DirEntryInfo>, Str
 mod engine_sec;
 
 #[tauri::command]
+fn tauri_delete_file(path: String) -> Result<bool, String> {
+    let p = std::path::Path::new(&path);
+    if p.exists() {
+        std::fs::remove_file(p).map_err(|e| e.to_string())?;
+        Ok(true)
+    } else {
+        Ok(false)
+    }
+}
+
+#[tauri::command]
 fn tauri_get_engine_key(challenge: String) -> Result<String, String> {
     engine_sec::get_key(&challenge)
 }
@@ -565,6 +576,7 @@ pub fn run() {
         tauri_pick_folder,
         tauri_open_folder,
         tauri_list_dir,
+        tauri_delete_file,
         tauri_get_engine_key
     ])
     .setup(|app| {

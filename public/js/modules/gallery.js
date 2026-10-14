@@ -1,10 +1,11 @@
-// gallery.js — scan Mori download folders into a media gallery
 import {
   Filesystem,
   pauseAllMedia,
   stopAllMedia,
   showToast,
+  triggerHaptic,
 } from "../utils/index.js";
+import { showConfirm } from "./modals.js";
 import { t } from "../i18n/index.js";
 import { createVideoPlayer } from "../components/player.js";
 
@@ -218,20 +219,138 @@ export async function scanGallery(force = false) {
   return activeScanPromise;
 }
 
-function sortItems(items) {
-  const sorted = [...items];
-  switch (gallerySort) {
-    case "oldest":
-      return sorted.sort((a, b) => a.mtime - b.mtime);
-    case "name":
-      return sorted.sort((a, b) => a.name.localeCompare(b.name));
-    case "largest":
-      return sorted.sort((a, b) => (b.size || 0) - (a.size || 0));
-    case "smallest":
-      return sorted.sort((a, b) => (a.size || 0) - (b.size || 0));
-    default:
-      return sorted.sort((a, b) => b.mtime - a.mtime);
+let cachedHistoryList = null;
+let lastHistoryLoadTime = 0;
+
+function getCachedHistory() {
+  const now = Date.now();
+  if (!cachedHistoryList || now - lastHistoryLoadTime > 800) {
+    try {
+      cachedHistoryList = JSON.parse(
+        localStorage.getItem("mori_history") || "[]",
+      );
+      lastHistoryLoadTime = now;
+    } catch (_) {
+      cachedHistoryList = [];
+    }
   }
+  return cachedHistoryList;
+}
+
+function findHistoryRecord(item, historyList = null) {
+  if (!item) return null;
+  const history = historyList || getCachedHistory();
+  if (!Array.isArray(history) || history.length === 0) return null;
+
+  const rawPath = String(item.path || "");
+  const rawName = String(item.name || "");
+  const itemPath = rawPath.toLowerCase();
+  const itemName = rawName.toLowerCase();
+  const itemBase = itemName.replace(/\.[^.]+$/, "");
+  const cleanItemBase = itemBase.replace(/[\W_]+/g, " ").trim();
+
+  for (const h of history) {
+    const hTitle = String(h.title || "").toLowerCase();
+    const cleanHTitle = hTitle.replace(/[\W_]+/g, " ").trim();
+    const hUri = String(h.localUri || "").toLowerCase();
+
+    // 1. Direct path/URI match
+    if (
+      hUri &&
+      (hUri === itemPath ||
+        hUri.endsWith("/" + itemName) ||
+        decodeURI(hUri).endsWith("/" + itemName))
+    ) {
+      return h;
+    }
+
+    // 2. Local files match
+    if (Array.isArray(h.localFiles)) {
+      for (const f of h.localFiles) {
+        const fp = String(f.path || f.uri || "").toLowerCase();
+        const fn = String(f.name || f.title || "").toLowerCase();
+        const fBase = fn.replace(/\.[^.]+$/, "");
+        if (
+          (fp &&
+            (fp === itemPath ||
+              fp.endsWith("/" + itemName) ||
+              decodeURI(fp).endsWith("/" + itemName))) ||
+          (fn && (fn === itemName || fBase === itemBase))
+        ) {
+          return h;
+        }
+      }
+    }
+
+    // 3. Downloads list match
+    if (Array.isArray(h.downloads)) {
+      for (const dl of h.downloads) {
+        const dlPath = String(dl.path || dl.uri || "").toLowerCase();
+        const dlName = String(dl.filename || dl.name || "").toLowerCase();
+        const dlBase = dlName.replace(/\.[^.]+$/, "");
+        if (
+          (dlPath && (dlPath === itemPath || dlPath.endsWith("/" + itemName))) ||
+          (dlName && (dlName === itemName || dlBase === itemBase))
+        ) {
+          return h;
+        }
+      }
+    }
+
+    // 4. Fuzzy title match
+    if (cleanItemBase && cleanHTitle) {
+      if (
+        cleanHTitle === cleanItemBase ||
+        cleanHTitle.includes(cleanItemBase) ||
+        cleanItemBase.includes(cleanHTitle)
+      ) {
+        return h;
+      }
+    }
+  }
+
+  return null;
+}
+
+function sortItems(items) {
+  const history = getCachedHistory();
+  const favInfoMap = new Map();
+  for (const item of items) {
+    const h = findHistoryRecord(item, history);
+    favInfoMap.set(item.path, {
+      isFav: !!h?.favorite,
+      favTime: h?.favoriteAt || h?.timestamp || item.mtime || 0,
+    });
+  }
+
+  const sorted = [...items];
+  return sorted.sort((a, b) => {
+    const favA = favInfoMap.get(a.path)?.isFav;
+    const favB = favInfoMap.get(b.path)?.isFav;
+
+    // Favorites always at the top!
+    if (favA && !favB) return -1;
+    if (!favA && favB) return 1;
+    if (favA && favB) {
+      const diff =
+        (favInfoMap.get(b.path)?.favTime || 0) -
+        (favInfoMap.get(a.path)?.favTime || 0);
+      if (diff !== 0) return diff;
+    }
+
+    switch (gallerySort) {
+      case "oldest":
+        return a.mtime - b.mtime;
+      case "name":
+        return a.name.localeCompare(b.name);
+      case "largest":
+        return (b.size || 0) - (a.size || 0);
+      case "smallest":
+        return (a.size || 0) - (b.size || 0);
+      default:
+        return b.mtime - a.mtime;
+    }
+  });
 }
 
 function filteredItems() {
@@ -264,39 +383,406 @@ function galleryFallbackIcon(category) {
   return placeholder;
 }
 
-function createVideoThumb(mediaUrl, name) {
-  const video = document.createElement("video");
-  video.className = "gallery-video-thumb";
-  video.muted = true;
-  video.playsInline = true;
-  video.preload = "metadata";
-  video.setAttribute("playsinline", "");
-  video.setAttribute("aria-label", name || "video");
-  video.style.opacity = "0";
-  const canFragment =
-    /^(https?|file|asset|tauri):/i.test(mediaUrl) || mediaUrl.startsWith("/");
-  video.src = canFragment ? `${mediaUrl}#t=1` : mediaUrl;
-  const show = () => {
-    video.style.opacity = "1";
-  };
-  video.addEventListener("loadeddata", () => {
+const TRANSPARENT_POSTER =
+  "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg'/>";
+const GALLERY_THUMB_KEY = "mori_gallery_thumbs";
+const GALLERY_THUMB_VER = "6";
+const memoryThumbCache = new Map();
+
+function loadPersistentThumbs() {
+  try {
+    const curVer = localStorage.getItem("mori_gallery_thumb_ver");
+    if (curVer !== GALLERY_THUMB_VER) {
+      localStorage.removeItem(GALLERY_THUMB_KEY);
+      localStorage.setItem("mori_gallery_thumb_ver", GALLERY_THUMB_VER);
+      return;
+    }
+    const raw = localStorage.getItem(GALLERY_THUMB_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      for (const [k, v] of Object.entries(parsed)) {
+        if (typeof v === "string" && v.length > 0) {
+          memoryThumbCache.set(k, v);
+        }
+      }
+    }
+  } catch (_) {}
+}
+loadPersistentThumbs();
+
+let saveThumbTimeout = null;
+function persistThumb(path, dataUrl) {
+  if (!path || !dataUrl) return;
+  memoryThumbCache.set(path, dataUrl);
+  if (saveThumbTimeout) clearTimeout(saveThumbTimeout);
+  saveThumbTimeout = setTimeout(() => {
     try {
-      const mark = Math.min(1.5, (video.duration || 2) * 0.15);
-      if (mark > 0.2 && video.currentTime < mark) video.currentTime = mark;
+      const obj = {};
+      const entries = Array.from(memoryThumbCache.entries()).slice(-250);
+      for (const [k, v] of entries) {
+        obj[k] = v;
+      }
+      localStorage.setItem(GALLERY_THUMB_KEY, JSON.stringify(obj));
     } catch (_) {}
-    show();
-  });
-  video.addEventListener("seeked", show);
-  video.addEventListener("error", () => {
-    video.remove();
-  });
-  return video;
+  }, 500);
 }
 
-function createPdfThumb() {
-  const wrap = document.createElement("div");
-  wrap.className = "gallery-pdf-thumb";
-  wrap.innerHTML = `
+function isValidThumb(t) {
+  return typeof t === "string" && t.length > 0 && !t.startsWith("thumb_");
+}
+
+function getThumbFromHistory(item) {
+  if (!item) return null;
+  try {
+    const h = findHistoryRecord(item);
+    if (!h) return null;
+
+    const rawPath = String(item.path || "").toLowerCase();
+    const rawName = String(item.name || "").toLowerCase();
+    const itemBase = rawName.replace(/\.[^.]+$/, "");
+
+    if (Array.isArray(h.localFiles)) {
+      for (const f of h.localFiles) {
+        const fp = String(f.path || f.uri || "").toLowerCase();
+        const fn = String(f.name || f.title || "").toLowerCase();
+        const fBase = fn.replace(/\.[^.]+$/, "");
+        if (
+          (fp && (fp === rawPath || fp.endsWith("/" + rawName))) ||
+          (fn && (fn === rawName || fBase === itemBase))
+        ) {
+          const cand = f.thumbnail || h.localThumbnail || h.thumbnail;
+          if (cand && isValidThumb(cand)) return toLocalMediaUrl(cand);
+        }
+      }
+    }
+
+    const cand = h.localThumbnail || h.thumbnail;
+    if (cand && isValidThumb(cand)) {
+      return toLocalMediaUrl(cand);
+    }
+    return null;
+  } catch (_) {
+    return null;
+  }
+}
+
+export async function deleteGalleryItem(item) {
+  if (!item) return false;
+  let deleted = false;
+
+  // 1. Android Native Bridge
+  if (window.MoriMainBridge?.deleteFile) {
+    try {
+      deleted = window.MoriMainBridge.deleteFile(item.path);
+      if (!deleted && !item.path?.startsWith("/")) {
+        deleted = window.MoriMainBridge.deleteFile(
+          "/storage/emulated/0/" + (item.path || "").replace(/^\/+/, ""),
+        );
+      }
+    } catch (e) {
+      console.warn("MoriMainBridge.deleteFile failed:", e);
+    }
+  }
+
+  // 2. Desktop Tauri
+  if (!deleted) {
+    const tauriInvoke =
+      window.__TAURI__?.core?.invoke ||
+      window.__TAURI_INTERNALS__?.invoke ||
+      window.__TAURI__?.invoke;
+    if (tauriInvoke && item.path) {
+      try {
+        deleted = await tauriInvoke("tauri_delete_file", { path: item.path });
+      } catch (e) {
+        console.warn("Tauri delete file failed:", e);
+      }
+    }
+  }
+
+  // 3. Capacitor Filesystem fallback
+  if (!deleted && Filesystem) {
+    if (item.directory && item.path) {
+      try {
+        await Filesystem.deleteFile({
+          path: item.path,
+          directory: item.directory,
+        });
+        deleted = true;
+      } catch (_) {}
+    }
+    if (!deleted && item.path) {
+      let clean = item.path
+        .replace(/^.*\/storage\/emulated\/0\//, "")
+        .replace(/^\//, "");
+      try {
+        clean = decodeURIComponent(clean);
+      } catch (_) {}
+      const dirs = ["EXTERNAL_STORAGE", "DOCUMENTS", "EXTERNAL"];
+      for (const d of dirs) {
+        try {
+          await Filesystem.deleteFile({ path: clean, directory: d });
+          deleted = true;
+          break;
+        } catch (_) {}
+      }
+    }
+  }
+
+  // Update gallery state & cache
+  const idx = galleryItems.findIndex((i) => i.path === item.path);
+  if (idx !== -1) {
+    galleryItems.splice(idx, 1);
+  }
+  const cachedCard = cardCache.get(item.path);
+  if (cachedCard) {
+    stopAllMedia(cachedCard);
+    cachedCard.remove();
+    cardCache.delete(item.path);
+  }
+  memoryThumbCache.delete(item.path);
+  memoryThumbCache.delete(item.name);
+
+  // Clean from mori_history localFiles / localUri if referenced
+  try {
+    const rawHist = localStorage.getItem("mori_history");
+    if (rawHist) {
+      const hist = JSON.parse(rawHist);
+      let changed = false;
+      const itemName = String(item.name || "").toLowerCase();
+      const itemPath = String(item.path || "").toLowerCase();
+      for (const h of hist) {
+        if (Array.isArray(h.localFiles)) {
+          const prevLen = h.localFiles.length;
+          h.localFiles = h.localFiles.filter((f) => {
+            const fp = String(f.path || f.uri || "").toLowerCase();
+            const fn = String(f.name || f.title || "").toLowerCase();
+            return !(
+              fp === itemPath ||
+              fn === itemName ||
+              (itemPath && fp.endsWith("/" + itemName))
+            );
+          });
+          if (h.localFiles.length !== prevLen) changed = true;
+        }
+        if (h.localUri) {
+          const lu = String(h.localUri).toLowerCase();
+          if (lu === itemPath || lu.endsWith("/" + itemName)) {
+            delete h.localUri;
+            changed = true;
+          }
+        }
+      }
+      if (changed) {
+        localStorage.setItem("mori_history", JSON.stringify(hist));
+        cachedHistoryList = null;
+        window.dispatchEvent(new CustomEvent("mori_history_updated"));
+      }
+    }
+  } catch (_) {}
+
+  renderGallery();
+  return deleted;
+}
+
+export function confirmDeleteGalleryItem(item, onDeleted = null) {
+  if (!item) return;
+  const title = t("gallery-delete-title") || t("btn-delete") || "Delete File";
+  const msg =
+    t("gallery-delete-confirm") ||
+    `Delete "${item.name}" permanently from your device?`;
+
+  showConfirm(title, msg, async () => {
+    try {
+      await deleteGalleryItem(item);
+      onDeleted?.();
+      showToast(t("gallery-file-deleted") || "File deleted");
+    } catch (e) {
+      console.error("Failed to delete gallery item:", e);
+      showToast(t("toast-delete-fail") || "Failed to delete file");
+    }
+  });
+}
+
+// Queue for asynchronous native / canvas thumbnail extraction
+const thumbQueue = [];
+let activeThumbWorkers = 0;
+const MAX_CONCURRENT_THUMBS = 2;
+
+function enqueueThumbTask(workFn) {
+  thumbQueue.push(workFn);
+  processNextThumbTask();
+}
+
+function processNextThumbTask() {
+  while (activeThumbWorkers < MAX_CONCURRENT_THUMBS && thumbQueue.length > 0) {
+    activeThumbWorkers++;
+    const workFn = thumbQueue.shift();
+    let doneCalled = false;
+    const onDone = () => {
+      if (doneCalled) return;
+      doneCalled = true;
+      activeThumbWorkers--;
+      processNextThumbTask();
+    };
+    try {
+      workFn(onDone);
+    } catch (_) {
+      onDone();
+    }
+  }
+}
+
+function extractCanvasThumb(mediaUrl, onData) {
+  const video = document.createElement("video");
+  video.muted = true;
+  video.playsInline = true;
+  video.preload = "auto";
+  video.poster = TRANSPARENT_POSTER;
+  video.setAttribute("playsinline", "");
+
+  let done = false;
+  let timer = null;
+  const cleanup = () => {
+    if (done) return;
+    done = true;
+    if (timer) clearTimeout(timer);
+    video.removeAttribute("src");
+    try {
+      video.load();
+    } catch (_) {}
+  };
+
+  const capture = () => {
+    if (done) return;
+    if (video.videoWidth > 0 && video.videoHeight > 0) {
+      done = true;
+      if (timer) clearTimeout(timer);
+      try {
+        const canvas = document.createElement("canvas");
+        const maxDim = 640;
+        const scale = Math.min(
+          maxDim / video.videoWidth,
+          maxDim / video.videoHeight,
+          1.0,
+        );
+        canvas.width = Math.round(video.videoWidth * scale);
+        canvas.height = Math.round(video.videoHeight * scale);
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+        onData(dataUrl);
+      } catch (_) {}
+      cleanup();
+    }
+  };
+
+  timer = setTimeout(cleanup, 3500);
+
+  video.addEventListener("loadeddata", () => {
+    try {
+      const mark = Math.min(1.0, Math.max(0.1, (video.duration || 2) * 0.1));
+      if (mark > 0.1 && video.currentTime < mark) {
+        setTimeout(capture, 400);
+        video.currentTime = mark;
+        return;
+      }
+    } catch (_) {}
+    capture();
+  });
+
+  video.addEventListener("seeked", capture);
+  video.addEventListener("error", cleanup);
+
+  const canFragment =
+    /^(https?|file|asset|tauri):/i.test(mediaUrl) || mediaUrl.startsWith("/");
+  video.src = canFragment ? `${mediaUrl}#t=0.5` : mediaUrl;
+}
+
+function loadVideoThumbnailAsync(item, img) {
+  // 1. Memory / localStorage cache
+  const cached =
+    memoryThumbCache.get(item.path) || memoryThumbCache.get(item.name);
+  if (cached) {
+    img.src = cached;
+    return;
+  }
+
+  // 2. Native Android / iOS bridge or fallback canvas
+  enqueueThumbTask(async (onDone) => {
+    try {
+      let thumb = null;
+      if (window.MoriMainBridge?.getVideoThumbnail) {
+        try {
+          thumb = window.MoriMainBridge.getVideoThumbnail(item.path);
+          if (!thumb && !item.path?.startsWith("/")) {
+            thumb = window.MoriMainBridge.getVideoThumbnail(
+              "/storage/emulated/0/" + (item.path || "").replace(/^\/+/, ""),
+            );
+          }
+        } catch (_) {}
+      } else if (window.Capacitor?.Plugins?.MoriSecurity?.getVideoThumbnail) {
+        try {
+          const res = await window.Capacitor.Plugins.MoriSecurity.getVideoThumbnail({
+            path: item.path,
+          }).catch(() => null);
+          if (res?.thumbnail) thumb = res.thumbnail;
+        } catch (_) {}
+      }
+
+      if (thumb && typeof thumb === "string" && !thumb.startsWith("thumb_")) {
+        persistThumb(item.path, thumb);
+        img.src = thumb;
+        onDone();
+        return;
+      }
+
+      // 3. Fallback: Mori download history cache
+      const fromHist = getThumbFromHistory(item);
+      if (fromHist) {
+        persistThumb(item.path, fromHist);
+        img.src = fromHist;
+        onDone();
+        return;
+      }
+
+      // 4. Fallback: Video element canvas capture
+      const mediaUrl = toLocalMediaUrl(item.path);
+      extractCanvasThumb(mediaUrl, (dataUrl) => {
+        if (dataUrl) {
+          persistThumb(item.path, dataUrl);
+          img.src = dataUrl;
+        }
+      });
+      setTimeout(onDone, 200);
+    } catch (_) {
+      onDone();
+    }
+  });
+}
+
+function createVideoThumb(item) {
+  const img = document.createElement("img");
+  img.className = "gallery-video-thumb";
+  img.alt = item.name || "video";
+  img.loading = "lazy";
+  img.referrerPolicy = "no-referrer";
+  img.style.opacity = "0";
+
+  img.onload = () => {
+    img.style.opacity = "1";
+    img.classList.add("loaded");
+  };
+  img.onerror = () => {
+    img.remove();
+  };
+
+  loadVideoThumbnailAsync(item, img);
+
+  return img;
+}
+
+function defaultPdfThumbHTML() {
+  return `
     <div class="gallery-pdf-icon-wrap">
       <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor">
         <path d="M20 2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12zM4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm12 4V9c0-.55-.45-1-1-1h-2v6h2c.55 0 1-.45 1-1v-1c0-.55-.45-1-1-1h-1v-2h1c.55 0 1-.45 1-1zm-2 1h1v1h-1v-1z"/>
@@ -304,6 +790,111 @@ function createPdfThumb() {
     </div>
     <span class="gallery-pdf-badge-label">PDF</span>
   `;
+}
+
+async function generatePdfCoverThumbnail(item) {
+  if (!window.pdfjsLib) return null;
+  try {
+    const bytes = await fetchPdfBytes(item);
+    if (!bytes || bytes.length === 0) return null;
+    window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+      "js/vendor/pdf.worker.min.js";
+    const loadingTask = window.pdfjsLib.getDocument({
+      data: bytes,
+      cMapUrl: "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/cmaps/",
+      cMapPacked: true,
+    });
+    const pdfDoc = await loadingTask.promise;
+    const page = await pdfDoc.getPage(1);
+    const vp = page.getViewport({ scale: 1.0 });
+    const targetW = 640;
+    const scale = targetW / vp.width;
+    const viewport = page.getViewport({ scale });
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(viewport.width);
+    canvas.height = Math.round(viewport.height);
+    const ctx = canvas.getContext("2d");
+    await page.render({ canvasContext: ctx, viewport }).promise;
+    const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+    try {
+      pdfDoc.destroy();
+    } catch (_) {}
+    return dataUrl;
+  } catch (_) {
+    return null;
+  }
+}
+
+function createPdfThumb(item) {
+  const wrap = document.createElement("div");
+  wrap.className = "gallery-pdf-thumb";
+
+  const img = document.createElement("img");
+  img.className = "gallery-video-thumb";
+  img.alt = item?.name || "pdf";
+  img.loading = "lazy";
+  img.referrerPolicy = "no-referrer";
+  img.style.opacity = "0";
+
+  img.onload = () => {
+    wrap.classList.add("has-image");
+    img.style.opacity = "1";
+    img.classList.add("loaded");
+  };
+  img.onerror = () => {
+    wrap.classList.remove("has-image");
+    img.remove();
+  };
+  wrap.appendChild(img);
+
+  const fallback = document.createElement("div");
+  fallback.className = "gallery-pdf-fallback-content";
+  fallback.innerHTML = `
+    <div class="gallery-pdf-icon-wrap">
+      <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor">
+        <path d="M20 2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12zM4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm12 4V9c0-.55-.45-1-1-1h-2v6h2c.55 0 1-.45 1-1v-1c0-.55-.45-1-1-1h-1v-2h1c.55 0 1-.45 1-1zm-2 1h1v1h-1v-1z"/>
+      </svg>
+    </div>
+    <span class="gallery-pdf-badge-label">PDF</span>
+  `;
+  wrap.appendChild(fallback);
+
+  const badge = document.createElement("span");
+  badge.className = "gallery-pdf-tag";
+  badge.textContent = "PDF";
+  wrap.appendChild(badge);
+
+  // 1. Check memory / localStorage cache
+  const cached =
+    item && (memoryThumbCache.get(item.path) || memoryThumbCache.get(item.name));
+  if (cached) {
+    img.src = cached;
+    return wrap;
+  }
+
+  // 2. Check history
+  const fromHist = item && getThumbFromHistory(item);
+  if (fromHist) {
+    persistThumb(item.path, fromHist);
+    img.src = fromHist;
+    return wrap;
+  }
+
+  // 3. Fallback: generate page 1 thumbnail from PDF bytes
+  if (item) {
+    enqueueThumbTask(async (onDone) => {
+      try {
+        const cover = await generatePdfCoverThumbnail(item);
+        if (cover) {
+          persistThumb(item.path, cover);
+          img.src = cover;
+        }
+      } finally {
+        onDone();
+      }
+    });
+  }
+
   return wrap;
 }
 
@@ -312,6 +903,12 @@ function buildItem(item) {
   card.className = `gallery-item cat-${item.category}`;
   card.setAttribute("data-name", item.name);
   card.setAttribute("data-path", item.path);
+
+  const hRecord = findHistoryRecord(item);
+  const isFav = !!hRecord?.favorite;
+  if (isFav) {
+    card.classList.add("is-favorite");
+  }
 
   const mediaUrl = toLocalMediaUrl(item.path);
   const thumb = document.createElement("div");
@@ -336,29 +933,141 @@ function buildItem(item) {
     if (img.complete && img.naturalWidth > 0) img.style.opacity = "1";
     thumb.appendChild(img);
   } else if (item.category === "video") {
-    thumb.appendChild(createVideoThumb(mediaUrl, item.name));
+    thumb.appendChild(createVideoThumb(item));
     const play = document.createElement("span");
     play.className = "gallery-play-badge";
     play.innerHTML =
       '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
     thumb.appendChild(play);
   } else if (item.category === "pdf" || item.category === "doc") {
-    thumb.appendChild(createPdfThumb());
+    thumb.appendChild(createPdfThumb(item));
   } else {
     thumb.appendChild(galleryFallbackIcon(item.category));
   }
   thumb.appendChild(label);
 
+  if (isFav) {
+    const favBadge = document.createElement("span");
+    favBadge.className = "gallery-fav-badge";
+    favBadge.setAttribute("title", "Favorite");
+    favBadge.innerHTML = `
+      <svg viewBox="0 0 24 24" width="13" height="13" fill="#ff3b5c" stroke="#ff3b5c" stroke-width="1.5">
+        <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+      </svg>
+    `;
+    thumb.appendChild(favBadge);
+  }
+
   const meta = document.createElement("div");
   meta.className = "gallery-meta";
   meta.innerHTML = `
-    <h4 title="${esc(item.name)}">${esc(item.name.length > 34 ? item.name.slice(0, 31) + "..." : item.name)}</h4>
-    <p>${item.mtime ? new Date(item.mtime).toLocaleDateString([], { dateStyle: "medium" }) : ""}${formatBytes(item.size) ? " · " + formatBytes(item.size) : ""}</p>
+    <div class="gallery-meta-text">
+      <h4 title="${esc(item.name)}">${esc(item.name.length > 34 ? item.name.slice(0, 31) + "..." : item.name)}</h4>
+      <p>${item.mtime ? new Date(item.mtime).toLocaleDateString([], { dateStyle: "medium" }) : ""}${formatBytes(item.size) ? " · " + formatBytes(item.size) : ""}</p>
+    </div>
+    <button class="gallery-card-del-btn" type="button" aria-label="${t("btn-delete") || "Delete"}" title="${t("btn-delete") || "Delete"}">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+        <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+      </svg>
+    </button>
   `;
   card.appendChild(thumb);
   card.appendChild(meta);
-  card.addEventListener("click", () => openGalleryViewer(item));
+
+  meta.querySelector(".gallery-card-del-btn")?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    confirmDeleteGalleryItem(item);
+  });
+
+  let pressTimer = null;
+  let isLongPress = false;
+  let startX = 0;
+  let startY = 0;
+
+  const startPress = (e) => {
+    isLongPress = false;
+    if (e.touches && e.touches[0]) {
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+    }
+    pressTimer = setTimeout(() => {
+      isLongPress = true;
+      try {
+        window.getSelection()?.removeAllRanges();
+      } catch (_) {}
+      triggerHaptic?.("medium");
+      confirmDeleteGalleryItem(item);
+    }, 550);
+  };
+
+  const cancelPress = () => {
+    if (pressTimer) {
+      clearTimeout(pressTimer);
+      pressTimer = null;
+    }
+  };
+
+  const movePress = (e) => {
+    if (e.touches && e.touches[0]) {
+      const dx = Math.abs(e.touches[0].clientX - startX);
+      const dy = Math.abs(e.touches[0].clientY - startY);
+      if (dx > 10 || dy > 10) cancelPress();
+    }
+  };
+
+  card.addEventListener("touchstart", startPress, { passive: true });
+  card.addEventListener("touchend", cancelPress);
+  card.addEventListener("touchmove", movePress, { passive: true });
+  card.addEventListener("touchcancel", cancelPress);
+  card.addEventListener("mousedown", (e) => {
+    if (e.button === 0) startPress(e);
+  });
+  card.addEventListener("mouseup", cancelPress);
+  card.addEventListener("mouseleave", cancelPress);
+  card.addEventListener("contextmenu", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    confirmDeleteGalleryItem(item);
+  });
+
+  card.addEventListener("click", (e) => {
+    if (e.target.closest(".gallery-card-del-btn")) return;
+    if (isLongPress) {
+      e.preventDefault();
+      e.stopPropagation();
+      isLongPress = false;
+      return;
+    }
+    openGalleryViewer(item);
+  });
+
   return card;
+}
+
+function syncCardFavoriteState(card, item) {
+  const hRecord = findHistoryRecord(item);
+  const isFav = !!hRecord?.favorite;
+  card.classList.toggle("is-favorite", isFav);
+
+  const thumb = card.querySelector(".gallery-thumb");
+  if (!thumb) return;
+  const favBadge = thumb.querySelector(".gallery-fav-badge");
+  if (isFav) {
+    if (!favBadge) {
+      const badge = document.createElement("span");
+      badge.className = "gallery-fav-badge";
+      badge.setAttribute("title", "Favorite");
+      badge.innerHTML = `
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="#ff3b5c" stroke="#ff3b5c" stroke-width="1.5">
+          <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+        </svg>
+      `;
+      thumb.appendChild(badge);
+    }
+  } else if (favBadge) {
+    favBadge.remove();
+  }
 }
 
 function renderGallery() {
@@ -377,7 +1086,6 @@ function renderGallery() {
   }
 
   if (items.length === 0) {
-    stopAllMedia(grid);
     grid.innerHTML = "";
     empty?.classList.remove("hidden");
     return;
@@ -385,24 +1093,27 @@ function renderGallery() {
   empty?.classList.add("hidden");
 
   const itemPathSet = new Set(items.map((i) => i.path));
+  const existingCards = new Map();
 
-  // Remove cards not present in current filtered items
   grid.querySelectorAll(".gallery-item").forEach((card) => {
     const p = card.getAttribute("data-path");
-    if (!itemPathSet.has(p)) {
-      stopAllMedia(card);
+    if (!p || !itemPathSet.has(p) || existingCards.has(p)) {
       card.remove();
+    } else {
+      existingCards.set(p, card);
     }
   });
 
   // Reorder and append cards without destroying existing DOM nodes
   const frag = document.createDocumentFragment();
   items.forEach((item) => {
-    let card = cardCache.get(item.path);
+    let card = existingCards.get(item.path) || cardCache.get(item.path);
     if (!card) {
       card = buildItem(item);
-      cardCache.set(item.path, card);
+    } else {
+      syncCardFavoriteState(card, item);
     }
+    cardCache.set(item.path, card);
     frag.appendChild(card);
   });
   grid.appendChild(frag);
@@ -548,7 +1259,12 @@ function renderPdfInViewer(body, item, overlay, header) {
     e.stopPropagation();
     openFileExternal(item);
   });
-  header.appendChild(extBtn);
+  const actions = header.querySelector(".gallery-viewer-actions");
+  if (actions) {
+    actions.insertBefore(extBtn, actions.firstChild);
+  } else {
+    header.appendChild(extBtn);
+  }
 
   const container = document.createElement("div");
   container.className = "gallery-pdf-viewer";
@@ -717,7 +1433,19 @@ function openGalleryViewer(item) {
       <h3 title="${esc(item.name)}">${esc(item.name)}</h3>
       <p>${esc(item.path)}</p>
     </div>
+    <div class="gallery-viewer-actions">
+      <button class="gallery-viewer-del-btn" type="button" aria-label="${t("btn-delete") || "Delete"}" title="${t("btn-delete") || "Delete"}">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+          <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+        </svg>
+      </button>
+    </div>
   `;
+
+  header.querySelector(".gallery-viewer-del-btn")?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    confirmDeleteGalleryItem(item, () => overlay._close?.());
+  });
 
   const body = document.createElement("div");
   body.className = "gallery-viewer-body";
@@ -821,6 +1549,10 @@ function areItemsEqual(a, b) {
 
 export function invalidateGalleryCache() {
   cardCache.clear();
+  memoryThumbCache.clear();
+  try {
+    localStorage.removeItem(GALLERY_THUMB_KEY);
+  } catch (_) {}
   galleryItems = [];
   galleryNeedsRescan = true;
   const page = document.getElementById("galleryPage");
@@ -842,6 +1574,8 @@ export function initGallery() {
     if (btn) btn.classList.add("scanning");
     try {
       cardCache.clear();
+      const grid = page.querySelector(".gallery-grid");
+      if (grid) grid.innerHTML = "";
       await scanGallery(true);
       galleryNeedsRescan = false;
       renderGallery();
@@ -850,23 +1584,6 @@ export function initGallery() {
       if (btn) btn.classList.remove("scanning");
     }
   });
-
-  // Auto-refresh when download completes without wiping UI into skeletons
-  const handleDownloadUpdate = () => {
-    galleryNeedsRescan = true;
-    const p = document.getElementById("galleryPage");
-    if (p && !p.classList.contains("hidden")) {
-      const prev = [...galleryItems];
-      scanGallery(true).then((items) => {
-        galleryNeedsRescan = false;
-        if (!areItemsEqual(prev, items)) renderGallery();
-      });
-    }
-  };
-
-  window.addEventListener("mori_download_ended", handleDownloadUpdate);
-  window.addEventListener("mori_file_saved", handleDownloadUpdate);
-  window.addEventListener("mori_app_resumed", handleDownloadUpdate);
 
   page.querySelectorAll(".gallery-chip").forEach((chip) => {
     chip.addEventListener("click", () => {
@@ -916,9 +1633,43 @@ export function initGallery() {
   });
 }
 
+// Global Event Listeners for real-time favorite & download sync across tabs
+window.addEventListener("mori_favorite_toggled", () => {
+  cachedHistoryList = null;
+  const p = document.getElementById("galleryPage");
+  if (p && !p.classList.contains("hidden")) {
+    renderGallery();
+  }
+});
+
+window.addEventListener("mori_history_updated", () => {
+  cachedHistoryList = null;
+  const p = document.getElementById("galleryPage");
+  if (p && !p.classList.contains("hidden")) {
+    renderGallery();
+  }
+});
+
+const handleDownloadUpdate = () => {
+  galleryNeedsRescan = true;
+  const p = document.getElementById("galleryPage");
+  if (p && !p.classList.contains("hidden")) {
+    const prev = [...galleryItems];
+    scanGallery(true).then((items) => {
+      galleryNeedsRescan = false;
+      if (!areItemsEqual(prev, items)) renderGallery();
+    });
+  }
+};
+
+window.addEventListener("mori_download_ended", handleDownloadUpdate);
+window.addEventListener("mori_file_saved", handleDownloadUpdate);
+window.addEventListener("mori_app_resumed", handleDownloadUpdate);
+
 export function refreshGalleryPage() {
   initGallery();
   renderGalleryToolbar();
+  cachedHistoryList = null;
   const page = document.getElementById("galleryPage");
   const grid = page?.querySelector(".gallery-grid");
   const hasRealCards = grid && grid.querySelector(".gallery-item");
@@ -930,9 +1681,8 @@ export function refreshGalleryPage() {
       renderGallery();
     });
   } else {
-    if (!hasRealCards) {
-      renderGallery();
-    }
+    // Immediately re-render with updated history favorites without waiting for scan
+    renderGallery();
     const prev = [...galleryItems];
     scanGallery(true).then((items) => {
       galleryNeedsRescan = false;

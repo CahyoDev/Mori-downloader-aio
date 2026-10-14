@@ -92,6 +92,8 @@ export function createVideoPlayer(dl, index, resultThumbnail) {
     : (() => {
         const v = document.createElement("video");
         v.setAttribute("referrerpolicy", "no-referrer");
+        v.poster =
+          "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg'/>";
         return v;
       })();
 
