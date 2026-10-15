@@ -3,10 +3,15 @@
   "version": "4.5.0",
   "description": "",
   "main": "index.js",
+  "workspaces": [
+    "cli"
+  ],
   "scripts": {
     "test": "node test/runner.js",
     "start": "node server.js",
     "compile:scrapers": "node scripts/compile-scrapers.mjs",
+    "cli": "node cli/index.js",
+    "cli:publish": "npm run compile:scrapers && npm publish ./cli",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build",
