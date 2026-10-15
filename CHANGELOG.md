@@ -7,6 +7,63 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.5.0] - 2026-10-15
+
+### Added
+
+- **Local Media Gallery Module (`gallery.js`)**:
+  - Scans downloaded media across Mori directories (`Download/Mori`, `Music/Mori`, `Pictures/Mori`, `Documents/Mori`).
+  - Categorizes media into Video (MP4, MKV, MOV, WebM), Audio (MP3, M4A, AAC, Opus, FLAC, WAV), Image (JPG, PNG, WebP, GIF), and PDF documents with filter chips and real-time item counts.
+  - Sorting engine supporting Newest, Oldest, Name A-Z, Largest, and Smallest with persistent preference storage (`mori_gallery_sort`).
+  - Dedicated Gallery tab on bottom navigation bar with responsive grid layout and custom glassmorphic sort dropdown.
+- **In-App Native PDF Viewer**:
+  - Bundled offline `pdfjs-dist@3.11.174` legacy UMD build (`public/js/vendor/`), enabling direct high-DPI (2x DPR) canvas rendering inside the gallery modal.
+  - Viewport lazy rendering via `IntersectionObserver` with automatic memory cleanup and canvas context destruction on viewer close.
+  - Dynamic page 1 cover extraction (`generatePdfCoverThumbnail`) generating 640px JPEG previews for PDF documents lacking history records.
+  - Page count subtitle (`X pages · Size`), external app opener button (`openFileExternal`), and graceful fallback to external opener card on load errors.
+- **High-Resolution 640px Thumbnails**:
+  - Upgraded Android native frame extraction (`MainActivity.java`), web canvas generator, and PDF cover generator to 640px max dimension and 85% JPEG quality.
+  - Replaced heavy video elements in the grid with lightweight `<img>` architecture backed by a sequential processing queue (`enqueueThumbTask`) to prevent hardware decoder exhaustion.
+  - Added cache versioning (`GALLERY_THUMB_VER = "6"`) in `localStorage` (`mori_gallery_thumbs`) to purge legacy low-res cached thumbnails.
+- **Audio Gallery Cover Previews & Grid Thumbnails**:
+  - History-style audio presentation in Gallery viewer with album artwork (`getThumbFromHistory`), track title, and native HTML5 controls with local Tauri binary reading (`tauri_read_file_bytes`) and Capacitor fallback.
+  - Display album artwork directly on audio cards in the Gallery grid, complete with hover play badge.
+- **Gallery Favorites Priority**:
+  - Cross-references items against `mori_history` records; favorited media automatically floats to the top of the grid with a red heart badge (`.gallery-fav-badge`) and card border accent (`.is-favorite`).
+  - Instant synchronization via `mori_favorite_toggled` and `mori_history_updated` listeners across tabs without requiring app restarts.
+- **In-App Cross-Platform File Deletion**:
+  - Delete files via card trash button, card long-press (550ms with haptic feedback), or viewer modal header.
+  - Native file deletion on Android (`MediaScannerConnection` index purge), Desktop Tauri (`tauri_delete_file`), and Capacitor `Filesystem` fallback.
+- **Player Unmute & Dedicated Volume Control**:
+  - Added dedicated volume/mute toggle (`.volume-toggle`) in player control bar, accessible in both preview and fullscreen modes.
+  - Added floating frosted-glass "Tap to unmute" badge (`.mori-player-unmute-badge`) that appears when browser/WebKit autoplay policies restrict unmuted playback.
+  - Decoupled fullscreen button (`.fs-toggle`) into an independent toggle with enter/exit icons and Escape/back key handling.
+- **Desktop Tauri Backend Commands**:
+  - Implemented `tauri_list_dir` in `src-tauri/src/lib.rs` for recursive directory scanning with file metadata (`name`, `path`, `size`, `modified`).
+  - Implemented `tauri_delete_file` for native desktop filesystem file deletion.
+- **Instant Auto-Paste & Native Paste Detection**:
+  - Reduced cold start and app resume paste delay to 300ms for instant clipboard link detection.
+  - Added native `paste` event listener on URL input: pasting via keyboard (Ctrl+V / Cmd+V) or mobile context menu immediately triggers analysis when auto-analyze is enabled.
+- **Privacy & Security Integration**:
+  - Integrated Gallery page with Mori Privacy Lock system, requiring PIN or biometric authentication if enabled.
+  - Auto-locks gallery on app pause/minimize via session state tracking.
+
+### Changed
+
+- **Gallery Sorting & DOM Reordering**: Implemented Map-based DOM card reuse (`cardCache`) in `gallery.js` to preserve existing DOM nodes during sort and filter switches, eliminating video frame decoding and image flicker.
+- **Settings Health Audit & Cleanup**: Purged orphaned `autoClearToggle` and `autoClearHistoryToggle` references in `storage.js`, `behavior.js`, and `core.js` in favor of day-based retention select menus, preventing accidental cache purges on launch.
+- **Multilingual Localization**: Added full Gallery translation strings across all 9 supported locales (`en`, `id`, `ar`, `hi`, `ja`, `ko`, `ru`, `tl`, `zh`).
+
+### Fixed
+
+- **Scan Concurrency & Duplicate Files**: Replaced boolean lock with `activeScanPromise` request deduplication in `gallery.js`, and stripped directory namespace prefixes on Android to prevent duplicate cards from overlapping storage paths.
+- **Video Aspect Ratio & Zoom in Viewer**: Fixed portrait (9:16) videos appearing cropped in gallery viewer modal by enforcing `object-fit: contain` and responsive bounds.
+- **Auto-Loop Stalls on Local Media**: Synchronized HTML `loop` attribute alongside IDL property in `player.js` and added `ended` event fallback (`video.currentTime = 0; video.play()`) to prevent loop stalls on local Android WebView media.
+- **Error & Exception Auto-Clear**: Integrated `autoClearInputBox()` into scrape error branches and catch blocks in `download.js` to ensure broken URLs clear automatically when auto-clear is enabled.
+- **Share Overlay Download Auto-Sync**: Added `mori_app_resumed` listener in `gallery.js` and dispatched `mori_download_ended` upon merging ShareActivity history, allowing media saved via the Share Overlay to appear in Gallery immediately.
+
+---
+
 ## [4.4.0] - 2026-10-01
 
 ### Added

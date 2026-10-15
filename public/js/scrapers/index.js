@@ -8,7 +8,7 @@ import { scraperFetch } from "./httpHelper.js";
 
 export * from "./httpHelper.js";
 
-export const BUNDLED_SCRAPER_VERSION = 3;
+export const BUNDLED_SCRAPER_VERSION = 4;
 window.__MORI_BUNDLED_SCRAPER_VERSION__ = BUNDLED_SCRAPER_VERSION;
 
 // Expose deps to the bundled IIFE core

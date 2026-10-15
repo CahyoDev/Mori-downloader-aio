@@ -6,7 +6,7 @@
 <p align="center"><em><strong>Save anything, From anywhere.</strong></em></p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-v4.4.0-brown?style=flat-square" alt="Version">
+  <img src="https://img.shields.io/badge/Version-v4.5.0-brown?style=flat-square" alt="Version">
   <img src="https://img.shields.io/github/downloads/coflyn/Mori/total?style=flat-square&color=blue" alt="Downloads">
   <img src="https://img.shields.io/github/stars/coflyn/Mori?style=flat-square&color=gold" alt="Stars">
   <img src="https://img.shields.io/github/repo-size/coflyn/Mori?style=flat-square&color=purple" alt="Repo Size">
@@ -146,7 +146,7 @@ Mori/
 │   ├── app/src/main/
 │   │   ├── java/com/mori/downloader/
 │   │   │   ├── DownloadForegroundService.java # Background download persistent service & wake-lock
-│   │   │   ├── MainActivity.java   # Main Activity + native HTTP bridge (CORS bypass)
+│   │   │   ├── MainActivity.java   # Main Activity + native HTTP bridge & 640px HD frame extractor
 │   │   │   └── ShareActivity.java  # Native Quick Save Share overlay & MediaStore indexer
 │   │   └── res/                # Android layout, drawables, XML configs & splash screens
 │   └── gradle/                 # Gradle build scripts & configurations
@@ -154,8 +154,14 @@ Mori/
 │   └── App/                    # iOS Xcode project, Info.plist, and CocoaPods
 ├── src-tauri/                  # Tauri v2 Desktop Rust backend (macOS & Windows)
 │   ├── capabilities/           # Application permissions & security capabilities
-│   ├── src/                    # Rust native HTTP & local filesystem provider
+│   ├── src/                    # Rust native HTTP, recursive directory scanner, & file deletion
 │   └── tauri.conf.json         # Desktop app configuration & window bounds
+├── src-scrapers/               # Modular ES scraper engine source files (16 platforms)
+├── scripts/                    # Build & compilation tooling
+│   └── compile-scrapers.mjs    # esbuild compilation script for scrapers bundle & checksum manifest
+├── landing/                    # Standalone promotional landing page & cross-platform download portal
+│   ├── index.html              # Landing page markup & release download links
+│   └── style.css               # Landing page responsive styling
 ├── assets/                     # App icons, mockups, & screenshots
 ├── public/                     # Frontend web assets (Vanilla JS + CSS)
 │   ├── css/                    # Modular CSS architecture
@@ -163,7 +169,7 @@ Mori/
 │   │   ├── base.css            # CSS reset, typography, header, dynamic greeting, bottom navigation
 │   │   ├── components.css      # Reusable buttons, custom toast, floating download bubble & dropup manager
 │   │   ├── home.css            # URL input bar, batch textarea, skeleton loader, media preview cards, custom fullscreen
-│   │   ├── gallery.css         # Media gallery grid, filtering chips, search toolbar, modal viewer
+│   │   ├── gallery.css         # Media gallery grid, filtering chips, search toolbar, modal viewer, audio & PDF card
 │   │   ├── history.css         # History layout, summary stats card, cards, actions bar, thumbnail overlay
 │   │   ├── settings.css        # Settings menu list, sub-page slide transitions, custom dropdowns
 │   │   ├── modals.css          # Modal overlays, PIN keypad, user guide, confirm & info dialogs
@@ -172,7 +178,7 @@ Mori/
 │   ├── js/
 │   │   ├── app.js              # Main application entry point & startup lifecycle
 │   │   ├── components/         # Reusable UI components
-│   │   │   └── player.js       # In-app media player (custom fullscreen overlay, gestures, smooth scrubbing)
+│   │   │   └── player.js       # In-app media player (fullscreen overlay, dedicated volume toggle, unmute badge)
 │   │   ├── downloader/         # Modular native download engine
 │   │   │   ├── filename.js     # Extension resolution, title sanitization, template & folder logic
 │   │   │   ├── headers.js      # Platform-specific Referer/Origin headers builder & URL unwrapper
@@ -189,9 +195,9 @@ Mori/
 │   │   │   ├── bgAnimation.js  # Interactive Live Canvas backgrounds (Stars, Waves, etc.)
 │   │   │   ├── core.js         # Shared global state, DOM references, constants
 │   │   │   ├── download.js     # Analysis pipeline & download controllers
-│   │   │   ├── gallery.js      # Storage scanning, media categorization, filter/sort & viewer modal
+│   │   │   ├── gallery.js      # Storage scanning, 640px HD thumbnails, favorites priority, PDF/audio viewer
 │   │   │   ├── history.js      # Download history manager, local storage, & cleanup
-│   │   │   ├── intents.js      # Auto-clipboard detection & deep link receiver
+│   │   │   ├── intents.js      # Auto-clipboard detection & native paste event listener
 │   │   │   ├── modals.js       # Confirmation dialogs & information modals
 │   │   │   ├── settings/       # Modular user settings & configuration subsystem
 │   │   │   │   ├── nativeSync.js # Native SharedPreferences bridge & platform detection
@@ -224,9 +230,12 @@ Mori/
 │   │   │   ├── pdfHelper.js    # PDF generation & image bundling via pdf-lib
 │   │   │   ├── urlUtils.js     # URL sanitization & tracking parameter remover
 │   │   │   └── index.js        # Barrel re-exporter providing 100% backward compatibility
-│   │   └── vendor/             # Bundled third-party libraries (pdf-lib)
-│   │       └── pdf-lib.min.js
+│   │   └── vendor/             # Bundled third-party libraries
+│   │       ├── pdf-lib.min.js  # PDF creation & image bundling
+│   │       ├── pdf.min.js      # Mozilla PDF.js offline rendering core
+│   │       └── pdf.worker.min.js # PDF.js background worker for high-DPI canvas
 │   ├── index.html              # Main single-page application markup
+│   ├── scrapers-version.json   # Scraper bundle version & SHA256 checksum manifest
 │   └── share.html              # Standalone Android Quick Save Share Overlay markup
 ├── capacitor.config.json       # Capacitor cross-platform configuration
 ├── package.json                # Project dependencies & build scripts
@@ -234,6 +243,7 @@ Mori/
 ├── CONTRIBUTING.md             # Developer setup, build guidelines, & PR instructions
 ├── GUIDE.md                    # In-app user manual & usage walkthrough
 ├── LICENSE                     # GNU General Public License v3.0
+├── log.txt                     # Internal engineering development log
 └── README.md                   # Primary project overview & documentation
 ```
 
