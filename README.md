@@ -7,11 +7,12 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Version-v4.5.0-brown?style=flat-square" alt="Version">
+  <a href="https://www.npmjs.com/package/@coflyn/mori"><img src="https://img.shields.io/npm/v/@coflyn/mori?style=flat-square&color=CB3837&logo=npm&logoColor=white" alt="NPM Version"></a>
   <img src="https://img.shields.io/github/downloads/coflyn/Mori/total?style=flat-square&color=blue" alt="Downloads">
   <img src="https://img.shields.io/github/stars/coflyn/Mori?style=flat-square&color=gold" alt="Stars">
   <img src="https://img.shields.io/github/repo-size/coflyn/Mori?style=flat-square&color=purple" alt="Repo Size">
   <img src="https://img.shields.io/badge/License-GPL--3.0-blue?style=flat-square" alt="License">
-  <img src="https://img.shields.io/badge/Platform-Android%20%7C%20iOS%20%7C%20macOS%20%7C%20Windows-3DDC84?style=flat-square&logo=android&logoColor=white" alt="Platform">
+  <img src="https://img.shields.io/badge/Platform-Android%20%7C%20iOS%20%7C%20macOS%20%7C%20Windows%20%7C%20CLI-3DDC84?style=flat-square&logo=android&logoColor=white" alt="Platform">
 </p>
 
 <div align="center">
@@ -43,13 +44,14 @@ Save and download videos, photos, and music from 16 platforms. No watermarks. No
 
 1. [How to Use](#-how-to-use)
 2. [Download & Installation](#-download--installation)
-3. [Features](#-features)
-4. [Supported Platforms & Scraper Engines](#-supported-platforms--scraper-engines)
-5. [For Developers & Building from Source](#-for-developers--building-from-source)
-6. [Scraper Architecture](#-scraper-architecture)
+3. [Mori CLI (Terminal)](#-mori-cli-terminal)
+4. [Features](#-features)
+5. [Supported Platforms & Scraper Engines](#-supported-platforms--scraper-engines)
+6. [For Developers & Building from Source](#-for-developers--building-from-source)
+7. [Scraper Architecture](#-scraper-architecture)
 
-7. [Disclaimer](#-disclaimer)
-8. [License & Terms of Use](#-license--terms-of-use)
+8. [Disclaimer](#-disclaimer)
+9. [License & Terms of Use](#-license--terms-of-use)
 
 ---
 
@@ -63,7 +65,7 @@ Saving media with Mori takes only three simple steps:
 
 ## 📥 Download & Installation
 
-Pre-compiled, ready-to-use packages are available for all devices on **[GitHub Releases](https://github.com/coflyn/Mori/releases)**.
+Pre-compiled, ready-to-use packages are available for all devices on **[GitHub Releases](https://github.com/coflyn/Mori/releases)** and **[npm](https://www.npmjs.com/package/@coflyn/mori)**.
 
 | Platform                                                                                                                        | Available Packages                                                | Installation Guide                                                                  |
 | :------------------------------------------------------------------------------------------------------------------------------ | :---------------------------------------------------------------- | :---------------------------------------------------------------------------------- |
@@ -71,9 +73,42 @@ Pre-compiled, ready-to-use packages are available for all devices on **[GitHub R
 | <img src="https://cdn.simpleicons.org/apple/000000" width="16" /> **macOS**                                                     | `Mori-v...-macOS-arm64.dmg`<br>`Mori-v...-macOS-arm64.app.tar.gz` | [Gatekeeper Quarantine Fix](GUIDE.md#macos-installation--gatekeeper-fix)            |
 | <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/windows11/windows11-original.svg" width="16" /> **Windows** | `Mori-v...-Windows-x64-Setup.exe`<br>`Mori-v...-Windows-x64.msi`  | [Windows Setup Guide](GUIDE.md#windows-installation)                                |
 | <img src="https://cdn.simpleicons.org/apple/000000" width="16" /> **iOS**                                                       | `Mori v...ipa`                                                    | [AltStore / TrollStore Sideloading](GUIDE.md#ios-sideloading-guide)                 |
+| <img src="https://cdn.simpleicons.org/npm/CB3837" width="16" /> **CLI (Terminal)**                                             | `npx @coflyn/mori`<br>`npm install -g @coflyn/mori`               | [Mori CLI Guide](#-mori-cli-terminal)                                               |
 
 > 📖 **Need help installing or troubleshooting?**  
 > Read the complete **[Installation, Sideloading & User Guide (GUIDE.md)](GUIDE.md)**.
+
+## 💻 Mori CLI (Terminal)
+
+Prefer the command line? Mori is also available as a standalone terminal CLI powered by `@clack/prompts`:
+
+```bash
+# Run directly without installation
+npx @coflyn/mori
+
+# Download any link directly
+npx @coflyn/mori <URL>
+
+# Download audio stream only (MP3)
+npx @coflyn/mori <URL> -a
+
+# Compile photo album directly into PDF
+npx @coflyn/mori <URL> -p
+```
+
+Or install globally:
+
+```bash
+npm install -g @coflyn/mori
+mori
+```
+
+Key CLI capabilities:
+- **Interactive REPL**: Arrow-key navigation, format selectors, and 21 slash commands (`/history`, `/play <num>`, `/delete <num>`, `/config`, `/stats`, `/update`, `/clear`, etc.).
+- **Automatic Version Checker**: Non-blocking check on launch alerts you whenever a newer CLI release is published to npm.
+- **Parallel Multi-Processing**: High-speed concurrent downloads for photo carousels and albums with clean single-row in-place progress.
+- **OTA Scraper Hot-Patching & Dual Updates**: Pull engine patches directly via `mori --update` or `/update` without waiting for package updates.
+- **Read the [CLI Documentation (cli/README.md)](cli/README.md)** for full CLI documentation and options reference.
 
 ## 📜 Features
 
