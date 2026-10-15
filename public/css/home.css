@@ -580,6 +580,47 @@ input[type="text"]:focus {
   transform: scale(1);
 }
 
+.mori-player-unmute-badge {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  color: #fff;
+  border-radius: 20px;
+  padding: 6px 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  z-index: 12;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+  transition: transform 0.15s ease, opacity 0.2s ease, background 0.2s ease;
+  pointer-events: auto;
+}
+
+.mori-player-unmute-badge:hover {
+  background: rgba(0, 0, 0, 0.85);
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+.mori-player-unmute-badge:active {
+  transform: scale(0.93);
+}
+
+.mori-player-unmute-badge.hidden {
+  display: none !important;
+}
+
+.mori-player-container.mori-fullscreen .mori-player-unmute-badge {
+  top: max(68px, calc(env(safe-area-inset-top, 0px) + 60px));
+  right: 16px;
+}
+
 .mori-player-container.is-audio {
   background-color: var(--surface) !important;
   position: relative;

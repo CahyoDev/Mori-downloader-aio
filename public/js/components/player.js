@@ -132,6 +132,7 @@ export function createVideoPlayer(dl, index, resultThumbnail) {
   let muteIcon = null;
   let isTransitioningFs = false;
   let isDragging = false;
+  let syncVolumeUI = () => {};
 
   const isSlideActive = () => {
     if (video._isStopped) return false;
@@ -171,11 +172,11 @@ export function createVideoPlayer(dl, index, resultThumbnail) {
               err,
             );
             video.muted = true;
-            if (unmuteIcon && muteIcon) {
-              unmuteIcon.classList.add("hidden");
-              muteIcon.classList.remove("hidden");
-            }
-            video.play().catch(() => {});
+            syncVolumeUI();
+            video
+              .play()
+              .then(() => syncVolumeUI())
+              .catch(() => {});
           }
         });
       }
@@ -658,6 +659,18 @@ export function createVideoPlayer(dl, index, resultThumbnail) {
   bigPlay.innerHTML = `<svg viewBox="0 0 24 24" width="30" height="30" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>`;
   playerContainer.appendChild(bigPlay);
 
+  const unmuteBadge = document.createElement("button");
+  unmuteBadge.className = "mori-player-unmute-badge hidden";
+  unmuteBadge.setAttribute("type", "button");
+  unmuteBadge.setAttribute("aria-label", "Unmute");
+  unmuteBadge.innerHTML = `
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+      <path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.58.45-1.24.8-1.95.99v2.06c1.26-.26 2.4-.83 3.37-1.62l3.06 3.06L21 21.73l-16.73-16.73zM12 4L9.91 6.09 12 8.18V4z"/>
+    </svg>
+    <span>Tap to unmute</span>
+  `;
+  playerContainer.appendChild(unmuteBadge);
+
   const controls = document.createElement("div");
   controls.className = "mori-player-controls";
   controls.innerHTML = `
@@ -671,10 +684,13 @@ export function createVideoPlayer(dl, index, resultThumbnail) {
         <div class="mori-player-progress-inner"></div>
       </div>
       <span class="mori-player-dur">0:00</span>
-      <button class="mori-player-btn action-right-btn" title="Fullscreen">
-        <svg class="fs-enter-icon" viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
-        <svg class="unmute-icon hidden" viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
+      <button class="mori-player-btn volume-toggle" title="Mute/Unmute">
+        <svg class="unmute-icon" viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
         <svg class="mute-icon hidden" viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.58.45-1.24.8-1.95.99v2.06c1.26-.26 2.4-.83 3.37-1.62l3.06 3.06L21 21.73l-16.73-16.73zM12 4L9.91 6.09 12 8.18V4z"/></svg>
+      </button>
+      <button class="mori-player-btn fs-toggle" title="Fullscreen">
+        <svg class="fs-enter-icon" viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
+        <svg class="fs-exit-icon hidden" viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z"/></svg>
       </button>
     </div>
   `;
@@ -707,29 +723,61 @@ export function createVideoPlayer(dl, index, resultThumbnail) {
   const prog = controls.querySelector(".mori-player-progress");
   const progInner = controls.querySelector(".mori-player-progress-inner");
 
-  const rightBtn = controls.querySelector(".action-right-btn");
-  const fsEnterIcon = rightBtn?.querySelector(".fs-enter-icon");
-  unmuteIcon = rightBtn?.querySelector(".unmute-icon");
-  muteIcon = rightBtn?.querySelector(".mute-icon");
+  const volumeBtn = controls.querySelector(".volume-toggle");
+  unmuteIcon = volumeBtn?.querySelector(".unmute-icon");
+  muteIcon = volumeBtn?.querySelector(".mute-icon");
 
-  const updateAudioIcons = () => {
-    if (!rightBtn) return;
-    if (playerContainer.classList.contains("mori-fullscreen")) {
-      fsEnterIcon?.classList.add("hidden");
-      rightBtn.title = video.muted ? "Unmute" : "Mute";
-      if (video.muted) {
-        unmuteIcon?.classList.add("hidden");
-        muteIcon?.classList.remove("hidden");
+  const fsBtn = controls.querySelector(".fs-toggle");
+  const fsEnterIcon = fsBtn?.querySelector(".fs-enter-icon");
+  const fsExitIcon = fsBtn?.querySelector(".fs-exit-icon");
+
+  syncVolumeUI = () => {
+    const isMuted = video.muted || video.volume === 0;
+    if (isMuted) {
+      unmuteIcon?.classList.add("hidden");
+      muteIcon?.classList.remove("hidden");
+      if (volumeBtn) volumeBtn.title = "Unmute";
+      if (!video.paused && !video.ended) {
+        unmuteBadge.classList.remove("hidden");
       } else {
-        unmuteIcon?.classList.remove("hidden");
-        muteIcon?.classList.add("hidden");
+        unmuteBadge.classList.add("hidden");
       }
     } else {
-      fsEnterIcon?.classList.remove("hidden");
-      unmuteIcon?.classList.add("hidden");
+      unmuteIcon?.classList.remove("hidden");
       muteIcon?.classList.add("hidden");
-      rightBtn.title = "Fullscreen";
+      if (volumeBtn) volumeBtn.title = "Mute";
+      unmuteBadge.classList.add("hidden");
     }
+  };
+
+  const updateFsIcons = () => {
+    if (playerContainer.classList.contains("mori-fullscreen")) {
+      fsEnterIcon?.classList.add("hidden");
+      fsExitIcon?.classList.remove("hidden");
+      if (fsBtn) fsBtn.title = "Exit Fullscreen";
+    } else {
+      fsEnterIcon?.classList.remove("hidden");
+      fsExitIcon?.classList.add("hidden");
+      if (fsBtn) fsBtn.title = "Fullscreen";
+    }
+  };
+
+  unmuteBadge.onclick = (e) => {
+    e.stopPropagation();
+    video.muted = false;
+    if (video.volume === 0) video.volume = 1;
+    syncVolumeUI();
+  };
+
+  volumeBtn.onclick = (e) => {
+    e.stopPropagation();
+    if (video.muted || video.volume === 0) {
+      video.muted = false;
+      if (video.volume === 0) video.volume = 1;
+    } else {
+      video.muted = true;
+    }
+    syncVolumeUI();
   };
 
   const handleKeydown = (e) => {
@@ -740,11 +788,10 @@ export function createVideoPlayer(dl, index, resultThumbnail) {
   };
   window.addEventListener("keydown", handleKeydown);
 
-  rightBtn.onclick = (e) => {
+  fsBtn.onclick = (e) => {
     e.stopPropagation();
     if (playerContainer.classList.contains("mori-fullscreen")) {
-      video.muted = !video.muted;
-      updateAudioIcons();
+      exitCustomFullscreen();
     } else {
       enterCustomFullscreen();
     }
@@ -773,7 +820,8 @@ export function createVideoPlayer(dl, index, resultThumbnail) {
 
     document.body.appendChild(playerContainer);
     playerContainer.classList.add("mori-fullscreen");
-    updateAudioIcons();
+    updateFsIcons();
+    syncVolumeUI();
     document.body.classList.add("mori-has-fullscreen");
 
     StatusBar?.hide?.().catch?.(() => {});
@@ -804,7 +852,8 @@ export function createVideoPlayer(dl, index, resultThumbnail) {
     }, 400);
 
     playerContainer.classList.remove("mori-fullscreen");
-    updateAudioIcons();
+    updateFsIcons();
+    syncVolumeUI();
     document.body.classList.remove("mori-has-fullscreen");
 
     StatusBar?.show?.().catch?.(() => {});
@@ -827,6 +876,10 @@ export function createVideoPlayer(dl, index, resultThumbnail) {
       video.play().catch(() => {});
     }
   };
+
+  video.addEventListener("volumechange", syncVolumeUI);
+  syncVolumeUI();
+  updateFsIcons();
 
   playerContainer._exitFullscreen = exitCustomFullscreen;
 
@@ -856,6 +909,7 @@ export function createVideoPlayer(dl, index, resultThumbnail) {
     playIcon.classList.add("hidden");
     pauseIcon.classList.remove("hidden");
     bigPlay.classList.remove("visible");
+    syncVolumeUI();
   };
 
   video.onpause = () => {
@@ -867,6 +921,7 @@ export function createVideoPlayer(dl, index, resultThumbnail) {
     pauseIcon.classList.add("hidden");
     bigPlay.innerHTML = `<svg viewBox="0 0 24 24" width="30" height="30" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>`;
     bigPlay.classList.add("visible");
+    unmuteBadge.classList.add("hidden");
   };
 
   const togglePlay = (e) => {

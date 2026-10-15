@@ -37,10 +37,16 @@ async fn tauri_http_request(
         Ok(res) => {
             let u = res.url().to_string();
             let s = res.status().as_u16();
-            let mut hdrs = HashMap::new();
+            let mut hdrs: HashMap<String, String> = HashMap::new();
             for (k, v) in res.headers() {
                 if let Ok(v_str) = v.to_str() {
-                    hdrs.insert(k.as_str().to_string(), v_str.to_string());
+                    let key = k.as_str().to_string();
+                    if let Some(existing) = hdrs.get_mut(&key) {
+                        existing.push_str(", ");
+                        existing.push_str(v_str);
+                    } else {
+                        hdrs.insert(key, v_str.to_string());
+                    }
                 }
             }
             let t = res.text().await.unwrap_or_default();
@@ -600,7 +606,7 @@ fn run_curl_fallback(
     body: Option<&str>,
 ) -> Result<serde_json::Value, String> {
     let mut cmd = std::process::Command::new("curl");
-    cmd.args(["--http1.1", "-s", "-i", "-X", method, url]);
+    cmd.args(["--http1.1", "-L", "-s", "-i", "-X", method, url]);
 
     if let Some(hdrs) = headers {
         for (k, v) in hdrs {
@@ -616,7 +622,7 @@ fn run_curl_fallback(
     let raw = String::from_utf8_lossy(&output.stdout).to_string();
 
     let mut status = 200u16;
-    let mut res_headers = HashMap::new();
+    let mut res_headers: HashMap<String, String> = HashMap::new();
     let mut body_str = raw.clone();
 
     if let Some(idx) = raw.rfind("\r\n\r\n") {
@@ -638,7 +644,14 @@ fn run_curl_fallback(
                     }
                 }
             } else if let Some((k, v)) = line.split_once(':') {
-                res_headers.insert(k.trim().to_lowercase(), v.trim().to_string());
+                let key = k.trim().to_lowercase();
+                let val = v.trim().to_string();
+                if let Some(existing) = res_headers.get_mut(&key) {
+                    existing.push_str(", ");
+                    existing.push_str(&val);
+                } else {
+                    res_headers.insert(key, val);
+                }
             }
         }
     } else if let Some(idx) = raw.rfind("\n\n") {
@@ -653,7 +666,14 @@ fn run_curl_fallback(
                     }
                 }
             } else if let Some((k, v)) = line.split_once(':') {
-                res_headers.insert(k.trim().to_lowercase(), v.trim().to_string());
+                let key = k.trim().to_lowercase();
+                let val = v.trim().to_string();
+                if let Some(existing) = res_headers.get_mut(&key) {
+                    existing.push_str(", ");
+                    existing.push_str(&val);
+                } else {
+                    res_headers.insert(key, val);
+                }
             }
         }
     }

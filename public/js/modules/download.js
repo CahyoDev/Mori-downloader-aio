@@ -887,6 +887,7 @@ downloadBtn.addEventListener("click", async () => {
           translations[currentLang]["label-error"] + ": " + errMsg;
       hideLoader(3000);
       if (supportedSection) supportedSection.classList.remove("hidden");
+      autoClearInputBox();
     }
   } catch (err) {
     downloadBtn.removeEventListener("click", cancelAnalyzeHandler);
@@ -902,6 +903,7 @@ downloadBtn.addEventListener("click", async () => {
       );
       hideLoader(5000);
       if (supportedSection) supportedSection.classList.remove("hidden");
+      autoClearInputBox();
     }
   }
 

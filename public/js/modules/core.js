@@ -115,9 +115,6 @@ export function setIsEditingHistory(v) {
   isEditingHistory = v;
 }
 
-export const autoClearHistoryToggle = document.getElementById(
-  "autoClearHistoryToggle",
-);
 export const lockTypeSelect = document.getElementById("lockTypeSelect");
 export const setPinBtn = document.getElementById("setPinBtn");
 
@@ -143,7 +140,6 @@ export const checkScraperUpdateBtn = document.getElementById("checkScraperUpdate
 export const platformVal = document.getElementById("platformVal");
 export const currentLangDisplay = document.getElementById("currentLangDisplay");
 export const darkModeToggle = document.getElementById("darkModeToggle");
-export const autoClearToggle = document.getElementById("autoClearToggle");
 export const howToUseBtn = document.getElementById("howToUseBtn");
 export const aboutAppBtn = document.getElementById("aboutAppBtn");
 export const incognitoToggle = document.getElementById("incognitoToggle");

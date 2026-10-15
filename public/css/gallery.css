@@ -424,13 +424,8 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  background: linear-gradient(
-    135deg,
-    rgba(239, 68, 68, 0.08),
-    rgba(220, 38, 38, 0.16)
-  );
-  color: #ef4444;
+  background: var(--surface);
+  color: var(--text-secondary);
   position: relative;
   overflow: hidden;
 }
@@ -450,46 +445,65 @@
   width: 52px;
   height: 52px;
   border-radius: 14px;
-  background: rgba(239, 68, 68, 0.14);
+  background: rgba(var(--primary-rgb), 0.08);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #ef4444;
-  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.15);
-}
-
-.gallery-pdf-badge-label {
-  font-size: 0.72rem;
-  font-weight: 800;
-  letter-spacing: 1px;
-  color: #ef4444;
-  text-transform: uppercase;
-}
-
-.gallery-pdf-tag {
-  position: absolute;
-  bottom: 8px;
-  right: 8px;
-  background: rgba(220, 38, 38, 0.88);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-  color: #fff;
-  font-size: 0.62rem;
-  font-weight: 800;
-  letter-spacing: 0.8px;
-  padding: 3px 7px;
-  border-radius: 4px;
-  pointer-events: none;
-  z-index: 2;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  color: var(--text-main);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
 }
 
 .gallery-pdf-thumb.has-image .gallery-pdf-fallback-content {
   display: none !important;
 }
 
-.gallery-pdf-thumb:not(.has-image) .gallery-pdf-tag {
+.gallery-audio-thumb {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface);
+  position: relative;
+  overflow: hidden;
+}
+
+.gallery-audio-thumb.has-image {
+  background: transparent;
+}
+
+.gallery-audio-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.gallery-audio-fallback-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+.gallery-audio-icon-wrap {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: rgba(var(--primary-rgb), 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary);
+}
+
+.gallery-audio-thumb.has-image .gallery-audio-fallback-content {
   display: none !important;
+}
+
+.gallery-item.cat-audio .gallery-audio-thumb:not(.has-image) ~ .gallery-play-badge {
+  display: none;
 }
 
 .gallery-play-badge {
@@ -869,8 +883,8 @@
   width: 72px;
   height: 72px;
   border-radius: 20px;
-  background: rgba(239, 68, 68, 0.15);
-  color: #ef4444;
+  background: rgba(var(--primary-rgb), 0.1);
+  color: var(--primary);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -923,13 +937,68 @@
   position: relative;
 }
 
-.gallery-viewer-body .mori-player-container.is-audio {
-  background: var(--surface) !important;
-  border: 1px solid rgba(var(--primary-rgb), 0.1);
-}
-
 .gallery-viewer-body.audio-mode {
   background: var(--bg-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+}
+
+.gallery-audio-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 380px;
+  background: var(--surface);
+  border: 1px solid var(--primary);
+  border-radius: var(--radius-xl);
+  padding: 24px 20px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
+  gap: 16px;
+  box-sizing: border-box;
+}
+
+.gallery-audio-cover {
+  width: 100%;
+  max-height: 280px;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  border-radius: var(--radius-lg, 12px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+  display: block;
+}
+
+.gallery-audio-placeholder {
+  width: 100%;
+  max-width: 240px;
+  aspect-ratio: 1 / 1;
+  border-radius: var(--radius-lg, 12px);
+  background: rgba(var(--primary-rgb), 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15);
+}
+
+.gallery-audio-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: center;
+  width: 100%;
+  padding: 0 4px;
+}
+
+.gallery-audio-card audio {
+  width: 100%;
+  outline: none;
+  border-radius: 24px;
 }
 
 .gallery-viewer-body .mori-player-container video {

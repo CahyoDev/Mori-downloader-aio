@@ -18,7 +18,6 @@ import {
   musicPathVal,
   changeMusicPathBtn,
   okConfirmBtn,
-  autoClearToggle,
   clearCacheBtn,
   wipeDataBtn,
 } from "../core.js";
@@ -556,31 +555,7 @@ export function initStorageSettings() {
     }
   });
 
-  // 5. Auto Clear Cache Toggle & Auto Trigger
-  const isAutoClear = localStorage.getItem("mori_auto_clear_cache") === "true";
-  if (autoClearToggle) {
-    autoClearToggle.checked = isAutoClear;
-    autoClearToggle.addEventListener("change", (e) => {
-      localStorage.setItem("mori_auto_clear_cache", e.target.checked);
-      const lang = translations[currentLang] || translations.en;
-      showToast(
-        e.target.checked
-          ? lang["toast-autoclear-cache-on"] || "Auto-clear cache enabled"
-          : lang["toast-autoclear-cache-off"] || "Auto-clear cache disabled",
-      );
-      if (e.target.checked) {
-        clearCacheSilently();
-      }
-    });
-  }
-
-  if (isAutoClear) {
-    setTimeout(() => {
-      clearCacheSilently();
-    }, 2000);
-  }
-
-  // 6. Manual Clear Cache Button
+  // 5. Manual Clear Cache Button
   clearCacheBtn?.addEventListener("click", () => {
     const lang = translations[currentLang] || translations.en;
     showConfirm(

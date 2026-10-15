@@ -356,15 +356,16 @@ document.addEventListener(
   { passive: true },
 );
 
-// Initial Auto-Download Check
+// Initial Auto-Paste & Auto-Download Check on App Open
 setTimeout(() => {
+  const autoPaste = localStorage.getItem("mori_auto_paste") !== "false";
   const autoDownload = localStorage.getItem("mori_auto_download") === "true";
-  if (autoDownload) {
+  if (autoPaste || autoDownload) {
     if (typeof handlePasteFromClipboard === "function") {
       handlePasteFromClipboard(true);
     }
   }
-}, 2000);
+}, 300);
 
 // Hardware Back Button Handler for Mobile
 let lastBackPressTime = 0;

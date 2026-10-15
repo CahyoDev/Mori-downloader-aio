@@ -14,8 +14,14 @@ export function autoClearInputBox() {
     const batchUrlInput = document.getElementById("batchUrlInput");
     const clearBtn = document.getElementById("clearBtn");
     const pasteBtn = document.getElementById("pasteBtn");
-    if (urlInput) urlInput.value = "";
-    if (batchUrlInput) batchUrlInput.value = "";
+    if (urlInput) {
+      urlInput.value = "";
+      urlInput.dispatchEvent(new Event("input"));
+    }
+    if (batchUrlInput) {
+      batchUrlInput.value = "";
+      batchUrlInput.dispatchEvent(new Event("input"));
+    }
     if (clearBtn) clearBtn.classList.add("hidden");
     if (pasteBtn) pasteBtn.classList.remove("hidden");
   }

@@ -110,6 +110,24 @@ urlInput.addEventListener("input", () => {
   }
 });
 
+urlInput.addEventListener("paste", () => {
+  if (isBatchMode) return;
+  const autoAnalyze = localStorage.getItem("mori_auto_analyze") === "true";
+  if (!autoAnalyze) return;
+
+  setTimeout(() => {
+    const trimmed = urlInput.value.trim();
+    const isUrl =
+      trimmed.startsWith("http") ||
+      trimmed.includes(".com") ||
+      trimmed.includes(".net") ||
+      trimmed.includes("youtu.be");
+    if (isUrl) {
+      downloadBtn?.click();
+    }
+  }, 100);
+});
+
 batchUrlInput?.addEventListener("input", () => {
   if (isBatchMode) {
     const isEmpty = batchUrlInput.value === "";
@@ -232,11 +250,11 @@ if (App && typeof App.addListener === "function") {
         setTimeout(() => {
           const timeSinceShared = Date.now() - lastHandledLinkTime;
           // Only paste if NO share intent arrived during this window
-          if (isIntentPending && timeSinceShared > 2500) {
+          if (isIntentPending && timeSinceShared > 1000) {
             handlePasteFromClipboard(true);
           }
           setIntentPending(false); // Reset for next time
-        }, 1500);
+        }, 300);
       }
     } else {
       // App going to background, reset flags & re-lock sensitive areas

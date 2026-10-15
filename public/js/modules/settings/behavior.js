@@ -14,7 +14,6 @@ import {
   incognitoToggle,
   autoPasteToggle,
   dataSaverToggle,
-  autoClearHistoryToggle,
   wifiOnlyToggle,
   autoDownloadToggle,
   autoPlayToggle,
@@ -67,22 +66,6 @@ export function initBehaviorSettings() {
           : lang["toast-datasaver-off"] || "Data saver disabled",
       );
       renderHistory(onHistoryItemClick, onHistoryDeleteClick);
-    });
-  }
-
-  // Auto-Clear History Toggle
-  if (autoClearHistoryToggle) {
-    autoClearHistoryToggle.checked =
-      localStorage.getItem("mori_autoclear_history") === "true";
-    autoClearHistoryToggle.addEventListener("change", (e) => {
-      localStorage.setItem("mori_autoclear_history", e.target.checked);
-      const lang = translations[currentLang] || translations.en;
-      showToast(
-        e.target.checked
-          ? lang["toast-autoclear-history-on"] || "Auto-clear history enabled"
-          : lang["toast-autoclear-history-off"] ||
-              "Auto-clear history disabled",
-      );
     });
   }
 

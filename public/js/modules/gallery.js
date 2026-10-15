@@ -16,7 +16,7 @@ const PDF_EXT = /\.(pdf)$/i;
 
 let galleryItems = [];
 let galleryFilter = "all";
-let gallerySort = "newest";
+let gallerySort = localStorage.getItem("mori_gallery_sort") || "newest";
 let galleryQuery = "";
 let activeScanPromise = null;
 let searchDebounceTimer = null;
@@ -785,10 +785,9 @@ function defaultPdfThumbHTML() {
   return `
     <div class="gallery-pdf-icon-wrap">
       <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor">
-        <path d="M20 2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12zM4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm12 4V9c0-.55-.45-1-1-1h-2v6h2c.55 0 1-.45 1-1v-1c0-.55-.45-1-1-1h-1v-2h1c.55 0 1-.45 1-1zm-2 1h1v1h-1v-1z"/>
+        <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>
       </svg>
     </div>
-    <span class="gallery-pdf-badge-label">PDF</span>
   `;
 }
 
@@ -849,20 +848,8 @@ function createPdfThumb(item) {
 
   const fallback = document.createElement("div");
   fallback.className = "gallery-pdf-fallback-content";
-  fallback.innerHTML = `
-    <div class="gallery-pdf-icon-wrap">
-      <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor">
-        <path d="M20 2H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12zM4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm12 4V9c0-.55-.45-1-1-1h-2v6h2c.55 0 1-.45 1-1v-1c0-.55-.45-1-1-1h-1v-2h1c.55 0 1-.45 1-1zm-2 1h1v1h-1v-1z"/>
-      </svg>
-    </div>
-    <span class="gallery-pdf-badge-label">PDF</span>
-  `;
+  fallback.innerHTML = defaultPdfThumbHTML();
   wrap.appendChild(fallback);
-
-  const badge = document.createElement("span");
-  badge.className = "gallery-pdf-tag";
-  badge.textContent = "PDF";
-  wrap.appendChild(badge);
 
   // 1. Check memory / localStorage cache
   const cached =
@@ -893,6 +880,57 @@ function createPdfThumb(item) {
         onDone();
       }
     });
+  }
+
+  return wrap;
+}
+
+function createAudioThumb(item) {
+  const wrap = document.createElement("div");
+  wrap.className = "gallery-audio-thumb";
+
+  const fallback = document.createElement("div");
+  fallback.className = "gallery-audio-fallback-content";
+  fallback.innerHTML = `
+    <div class="gallery-audio-icon-wrap">
+      <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor">
+        <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
+      </svg>
+    </div>
+  `;
+  wrap.appendChild(fallback);
+
+  const img = document.createElement("img");
+  img.alt = item?.name || "audio";
+  img.loading = "lazy";
+  img.referrerPolicy = "no-referrer";
+  img.style.opacity = "0";
+
+  img.onload = () => {
+    wrap.classList.add("has-image");
+    img.style.opacity = "1";
+    img.classList.add("loaded");
+  };
+  img.onerror = () => {
+    wrap.classList.remove("has-image");
+    img.remove();
+  };
+  wrap.appendChild(img);
+
+  // 1. Check memory / localStorage cache
+  const cached =
+    item && (memoryThumbCache.get(item.path) || memoryThumbCache.get(item.name));
+  if (cached) {
+    img.src = cached;
+    return wrap;
+  }
+
+  // 2. Check history
+  const fromHist = item && getThumbFromHistory(item);
+  if (fromHist) {
+    persistThumb(item.path, fromHist);
+    img.src = fromHist;
+    return wrap;
   }
 
   return wrap;
@@ -934,6 +972,13 @@ function buildItem(item) {
     thumb.appendChild(img);
   } else if (item.category === "video") {
     thumb.appendChild(createVideoThumb(item));
+    const play = document.createElement("span");
+    play.className = "gallery-play-badge";
+    play.innerHTML =
+      '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
+    thumb.appendChild(play);
+  } else if (item.category === "audio") {
+    thumb.appendChild(createAudioThumb(item));
     const play = document.createElement("span");
     play.className = "gallery-play-badge";
     play.innerHTML =
@@ -1418,6 +1463,150 @@ function renderPdfInViewer(body, item, overlay, header) {
   })();
 }
 
+function renderAudioInViewer(body, item, mediaUrl) {
+  body.classList.add("audio-mode");
+
+  const card = document.createElement("div");
+  card.className = "gallery-audio-card";
+
+  const thumbUrl = getThumbFromHistory(item);
+  const makePlaceholder = () => {
+    const ph = document.createElement("div");
+    ph.className = "gallery-audio-placeholder";
+    ph.innerHTML = `
+      <svg viewBox="0 0 24 24" width="64" height="64" fill="currentColor">
+        <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
+      </svg>
+    `;
+    return ph;
+  };
+
+  if (thumbUrl) {
+    const img = document.createElement("img");
+    img.className = "gallery-audio-cover";
+    img.src = thumbUrl;
+    img.referrerPolicy = "no-referrer";
+    img.onerror = () => {
+      img.replaceWith(makePlaceholder());
+    };
+    card.appendChild(img);
+  } else {
+    card.appendChild(makePlaceholder());
+  }
+
+  const titleEl = document.createElement("div");
+  titleEl.className = "gallery-audio-title";
+  titleEl.textContent = item.name ? item.name.replace(/\.[^.]+$/, "") : "Audio";
+  card.appendChild(titleEl);
+
+  const audio = document.createElement("audio");
+  audio.controls = true;
+  audio.style.width = "100%";
+  const autoPlaySetting = localStorage.getItem("mori_autoplay") !== "false";
+  const loopSetting = localStorage.getItem("mori_loop") !== "false";
+  audio.autoplay = false;
+  audio.loop = loopSetting;
+  if (loopSetting) audio.setAttribute("loop", "");
+
+  audio.addEventListener("ended", () => {
+    if (localStorage.getItem("mori_loop") !== "false") {
+      audio.currentTime = 0;
+      audio.play().catch(() => {});
+    }
+  });
+
+  const tauriInvoke =
+    window.__TAURI__?.core?.invoke ||
+    window.__TAURI_INTERNALS__?.invoke ||
+    window.__TAURI__?.invoke;
+
+  let cleanPath = item.path || mediaUrl || "";
+  if (cleanPath.includes("_capacitor_file_")) {
+    cleanPath = cleanPath.substring(cleanPath.indexOf("_capacitor_file_") + 16);
+  }
+  if (cleanPath.startsWith("file://")) {
+    cleanPath = cleanPath.replace(/^file:\/\//, "");
+  }
+  try {
+    cleanPath = decodeURIComponent(cleanPath);
+  } catch (_) {}
+
+  if (tauriInvoke) {
+    const mime = cleanPath.toLowerCase().endsWith(".m4a")
+      ? "audio/mp4"
+      : "audio/mpeg";
+    tauriInvoke("tauri_read_file_bytes", { path: cleanPath })
+      .then((bytes) => {
+        if (audio._isStopped || !audio.isConnected) return;
+        if (bytes && bytes.length > 0) {
+          const blob = new Blob([new Uint8Array(bytes)], { type: mime });
+          const blobUrl = URL.createObjectURL(blob);
+          audio._blobUrl = blobUrl;
+          audio.src = blobUrl;
+          audio.load();
+          if (autoPlaySetting) audio.play().catch(() => {});
+        } else {
+          audio.src = mediaUrl;
+          if (autoPlaySetting) audio.play().catch(() => {});
+        }
+      })
+      .catch((e) => {
+        console.warn("Gallery audio tauri read error:", e);
+        audio.src = mediaUrl;
+        if (autoPlaySetting) audio.play().catch(() => {});
+      });
+  } else {
+    audio.src = mediaUrl;
+    if (autoPlaySetting) audio.play().catch(() => {});
+  }
+
+  let audioRetried = false;
+  audio.onerror = async () => {
+    if (
+      !audioRetried &&
+      (cleanPath.includes("_capacitor_file_") ||
+        cleanPath.startsWith("file://")) &&
+      window.Capacitor?.isNativePlatform?.() &&
+      window.Capacitor?.Plugins?.Filesystem
+    ) {
+      audioRetried = true;
+      try {
+        const Filesystem = window.Capacitor.Plugins.Filesystem;
+        let relPath = cleanPath
+          .replace(/^.*\/storage\/emulated\/0\//, "")
+          .replace(/^\//, "");
+        let res;
+        for (const d of ["EXTERNAL_STORAGE", "DOCUMENTS", "EXTERNAL"]) {
+          try {
+            res = await Filesystem.readFile({ path: relPath, directory: d });
+            if (res && res.data) break;
+          } catch (_) {}
+        }
+        if (res && res.data) {
+          const byteChars = atob(res.data);
+          const byteArr = new Uint8Array(byteChars.length);
+          for (let i = 0; i < byteChars.length; i++)
+            byteArr[i] = byteChars.charCodeAt(i);
+          const mime = cleanPath.toLowerCase().endsWith(".m4a")
+            ? "audio/mp4"
+            : "audio/mpeg";
+          const blob = new Blob([byteArr], { type: mime });
+          const blobUrl = URL.createObjectURL(blob);
+          audio._blobUrl = blobUrl;
+          audio.src = blobUrl;
+          audio.load();
+          if (autoPlaySetting) audio.play().catch(() => {});
+        }
+      } catch (err) {
+        console.warn("Gallery audio Filesystem fallback failed:", err);
+      }
+    }
+  };
+
+  card.appendChild(audio);
+  body.appendChild(card);
+}
+
 function openGalleryViewer(item) {
   pauseAllMedia(document);
   const overlay = document.createElement("div");
@@ -1459,16 +1648,15 @@ function openGalleryViewer(item) {
     body.appendChild(img);
   } else if (item.category === "pdf" || item.category === "doc") {
     renderPdfInViewer(body, item, overlay, header);
+  } else if (item.category === "audio") {
+    renderAudioInViewer(body, item, mediaUrl);
   } else {
-    if (item.category === "audio") {
-      body.classList.add("audio-mode");
-    }
     const player = createVideoPlayer(
       {
         url: mediaUrl,
         rawUri: item.path,
         rawPath: item.path,
-        type: item.category === "audio" ? "AUDIO" : "VIDEO",
+        type: "VIDEO",
         isLocal: true,
         filename: item.name,
         title: item.name,
@@ -1609,6 +1797,7 @@ export function initGallery() {
     item.addEventListener("click", (e) => {
       e.stopPropagation();
       gallerySort = item.getAttribute("data-value") || "newest";
+      localStorage.setItem("mori_gallery_sort", gallerySort);
       sortMenu?.classList.add("hidden");
       sortSelect?.classList.remove("active");
       renderGalleryToolbar();

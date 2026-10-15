@@ -17,9 +17,7 @@ export function needsAsyncResolving(url) {
       url.includes("spotidown_resolve:") ||
       url.includes("applemusic_resolve:") ||
       (url.includes("token=") && url.includes("snapsave"))) &&
-    !url
-      .toLowerCase()
-      .match(/\.(mp4|mp3|m4a|zip|pdf|jpg|jpeg|png|webp)(\?|$)/)
+    !url.toLowerCase().match(/\.(mp4|mp3|m4a|zip|pdf|jpg|jpeg|png|webp)(\?|$)/)
   );
 }
 
@@ -99,9 +97,7 @@ export async function resolveDownloadUrl({
     if (foundLink) {
       actualDownloadUrl = foundLink;
     } else {
-      throw (
-        lastErr || new Error("Could not resolve Apple Music download link")
-      );
+      throw lastErr || new Error("Could not resolve Apple Music download link");
     }
   } else if (url.startsWith("spotidown_resolve:")) {
     if (btn) {
@@ -121,20 +117,33 @@ export async function resolveDownloadUrl({
     for (let attempt = 1; attempt <= maxResolveAttempts; attempt++) {
       if (checkCancelled()) return { cancelled: true };
       try {
-        if (attempt > 1) {
-          updateProgress(
-            20,
-            `Resolving Spotify track (Retry ${attempt}/${maxResolveAttempts})...`,
-          );
-          await new Promise((r) => setTimeout(r, 1500 * attempt));
-          // Refresh session cookies from spotidown.app if failed previously
+        if (attempt > 1 || !cookiesStr) {
+          if (attempt > 1) {
+            updateProgress(
+              20,
+              `Resolving Spotify track (Retry ${attempt}/${maxResolveAttempts})...`,
+            );
+            await new Promise((r) => setTimeout(r, 1500 * attempt));
+          }
           try {
-            const r1 = await scraperFetch({
-              url: "https://spotidown.app/",
-              headers: { "User-Agent": getUserAgent() },
+            const trackUrl =
+              new URLSearchParams(payloadStr).get("base") ||
+              "https://open.spotify.com";
+            const rSession = await scraperFetch({
+              url: "https://spotidown.app/action",
+              method: "POST",
+              data: `url=${encodeURIComponent(trackUrl)}&g-recaptcha-response=dummy_token`,
+              headers: {
+                "Content-Type":
+                  "application/x-www-form-urlencoded; charset=UTF-8",
+                "User-Agent": getUserAgent(),
+                "X-Requested-With": "XMLHttpRequest",
+                Origin: "https://spotidown.app",
+                Referer: "https://spotidown.app/",
+              },
               rawResponse: true,
             });
-            const freshCookies = getCookiesFromHeaders(r1.headers);
+            const freshCookies = getCookiesFromHeaders(rSession.headers);
             if (freshCookies) cookiesStr = freshCookies;
           } catch (_) {}
         }
@@ -164,8 +173,11 @@ export async function resolveDownloadUrl({
             dd = JSON.parse(dd);
           } catch (_) {}
         }
-        let dlHtml =
-          (typeof dd === "object" ? dd?.data || dd?.html : dd) || "";
+        if (dd && dd.error && dd.message) {
+          lastErr = new Error(dd.message);
+          cookiesStr = "";
+        }
+        let dlHtml = (typeof dd === "object" ? dd?.data || dd?.html : dd) || "";
         if (typeof dlHtml !== "string") dlHtml = JSON.stringify(dlHtml);
         const parser = new DOMParser();
         const doc = parser.parseFromString(dlHtml, "text/html");
@@ -192,9 +204,7 @@ export async function resolveDownloadUrl({
       updateProgress(50, "Starting MP3 download...");
       actualDownloadUrl = foundLink;
     } else {
-      throw (
-        lastErr || new Error("Could not resolve SpotiDown download link")
-      );
+      throw lastErr || new Error("Could not resolve SpotiDown download link");
     }
   } else if (url.startsWith("soundloaders_resolve:")) {
     if (btn) {
@@ -268,8 +278,7 @@ export async function resolveDownloadUrl({
             dd = JSON.parse(dd);
           } catch (_) {}
         }
-        let dlHtml =
-          (typeof dd === "object" ? dd?.html || dd?.data : dd) || "";
+        let dlHtml = (typeof dd === "object" ? dd?.html || dd?.data : dd) || "";
         const match =
           dlHtml.match(
             /href=["'](https:\/\/(?:dl\.spotimate\.app|dl\.soundloaders\.app)[^"']+)["']/,
@@ -291,8 +300,7 @@ export async function resolveDownloadUrl({
       actualDownloadUrl = matchLink;
     } else {
       throw (
-        lastErr ||
-        new Error("Could not resolve Soundloaders download link")
+        lastErr || new Error("Could not resolve Soundloaders download link")
       );
     }
   } else if (
@@ -377,7 +385,10 @@ export async function resolveDownloadUrl({
               btn.innerHTML = `<div>${translations[currentLang]?.["btn-processing"] || "Processing..."} (${attempts + 1}/${maxAttempts})</div>`;
             }
             updateProgress(
-              Math.min(90, 10 + Math.round(((attempts + 1) / maxAttempts) * 80)),
+              Math.min(
+                90,
+                10 + Math.round(((attempts + 1) / maxAttempts) * 80),
+              ),
               `Converting with ytmp3... (${attempts + 1}/${maxAttempts})`,
             );
 
@@ -393,7 +404,10 @@ export async function resolveDownloadUrl({
         }
       }
     } catch (mobiErr) {
-      console.warn("ytmp3.mobi engine failed, falling back to convert1s:", mobiErr);
+      console.warn(
+        "ytmp3.mobi engine failed, falling back to convert1s:",
+        mobiErr,
+      );
     }
 
     if (!downloadUrl && !checkCancelled()) {
@@ -468,14 +482,15 @@ export async function resolveDownloadUrl({
                 },
               });
               let poll =
-                typeof pollData === "string"
-                  ? JSON.parse(pollData)
-                  : pollData;
+                typeof pollData === "string" ? JSON.parse(pollData) : pollData;
               if (poll && poll.status === "completed" && poll.downloadUrl) {
                 downloadUrl = poll.downloadUrl;
                 break;
               }
-              if (poll && (poll.status === "error" || poll.status === "failed")) {
+              if (
+                poll &&
+                (poll.status === "error" || poll.status === "failed")
+              ) {
                 break;
               }
             } catch (_) {}
