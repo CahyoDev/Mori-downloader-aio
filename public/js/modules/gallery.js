@@ -791,9 +791,28 @@ function defaultPdfThumbHTML() {
   `;
 }
 
+let pdfjsLibPromise = null;
+async function ensurePdfJs() {
+  if (window.pdfjsLib) return window.pdfjsLib;
+  if (!pdfjsLibPromise) {
+    pdfjsLibPromise = new Promise((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src = "js/vendor/pdf.min.js";
+      script.onload = () => resolve(window.pdfjsLib);
+      script.onerror = () => {
+        pdfjsLibPromise = null;
+        reject(new Error("Failed to load pdf.min.js"));
+      };
+      document.head.appendChild(script);
+    });
+  }
+  return pdfjsLibPromise;
+}
+
 async function generatePdfCoverThumbnail(item) {
-  if (!window.pdfjsLib) return null;
   try {
+    await ensurePdfJs();
+    if (!window.pdfjsLib) return null;
     const bytes = await fetchPdfBytes(item);
     if (!bytes || bytes.length === 0) return null;
     window.pdfjsLib.GlobalWorkerOptions.workerSrc =
@@ -1341,6 +1360,7 @@ function renderPdfInViewer(body, item, overlay, header) {
 
   (async () => {
     try {
+      await ensurePdfJs();
       if (!window.pdfjsLib) {
         throw new Error("PDF renderer not available");
       }

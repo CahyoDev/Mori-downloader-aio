@@ -1,5 +1,24 @@
 import { CapacitorHttp } from "../utils/index.js";
 
+let pdfLibPromise = null;
+
+export async function ensurePdfLib() {
+  if (window.PDFLib?.PDFDocument) return window.PDFLib;
+  if (!pdfLibPromise) {
+    pdfLibPromise = new Promise((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src = "js/vendor/pdf-lib.min.js";
+      script.onload = () => resolve(window.PDFLib);
+      script.onerror = () => {
+        pdfLibPromise = null;
+        reject(new Error("Failed to load pdf-lib.min.js"));
+      };
+      document.head.appendChild(script);
+    });
+  }
+  return pdfLibPromise;
+}
+
 /**
  * Converts an array of image URLs into a PDF Uint8Array using pdf-lib (already included in Mori).
  * @param {string[]} imageUrls - Array of image URLs to combine into PDF.
@@ -9,6 +28,8 @@ export async function convertImagesToPdf(imageUrls) {
   if (!imageUrls || imageUrls.length === 0) {
     throw new Error("No images provided for PDF generation.");
   }
+
+  await ensurePdfLib();
 
   if (!window.PDFLib || !window.PDFLib.PDFDocument) {
     throw new Error("pdf-lib is not available.");

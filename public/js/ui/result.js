@@ -22,6 +22,7 @@ import {
 import { startNativeDownload } from "./nativeDownload.js";
 import { downloadBubble } from "./downloadBubble.js";
 import { escapeHtml } from "../ui.js";
+import { ensurePdfLib } from "../utils/pdfHelper.js";
 
 export function renderMediaSlides(container, items, resultThumbnail) {
   if (!container) return;
@@ -1173,6 +1174,7 @@ export async function exportGalleryToPdf(title, items) {
       },
     });
 
+    await ensurePdfLib();
     const { PDFDocument } = window.PDFLib;
     const pdfDoc = await PDFDocument.create();
 
