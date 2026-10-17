@@ -11,6 +11,10 @@
   <a href="https://github.com/coflyn/Mori"><img src="https://img.shields.io/badge/GitHub-coflyn%2FMori-black?style=flat-square&logo=github" alt="GitHub"></a>
 </p>
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/coflyn/Mori/main/assets/cli.webp" width="90%" alt="Mori CLI Preview">
+</p>
+
 ---
 
 Command-line interface for **[Mori](https://github.com/coflyn/Mori)**. Download watermark-free videos, high-resolution photos, music, playlists, and compile albums into PDF across 16 platforms directly from your terminal.

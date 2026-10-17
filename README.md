@@ -28,14 +28,14 @@ Save and download videos, photos, and music from 16 platforms. No watermarks. No
 ## 📸 Screenshots
 
 <p align="center">
-  <img src="assets/1.png" width="30%">
-  <img src="assets/2.png" width="30%">
-  <img src="assets/3.png" width="30%">
+  <img src="assets/1.webp" width="30%">
+  <img src="assets/2.webp" width="30%">
+  <img src="assets/3.webp" width="30%">
 </p>
 <p align="center">
-  <img src="assets/4.png" width="30%">
-  <img src="assets/5.png" width="30%">
-  <img src="assets/6.png" width="30%">
+  <img src="assets/4.webp" width="30%">
+  <img src="assets/5.webp" width="30%">
+  <img src="assets/6.webp" width="30%">
 </p>
 
 ---
@@ -81,6 +81,10 @@ Pre-compiled, ready-to-use packages are available for all devices on **[GitHub R
 ## 💻 Mori CLI (Terminal)
 
 Prefer the command line? Mori is also available as a standalone terminal CLI powered by `@clack/prompts`:
+
+<p align="center">
+  <img src="assets/cli.webp" width="85%" alt="Mori CLI Preview">
+</p>
 
 ```bash
 # Run directly without installation
