@@ -22,6 +22,12 @@
     native <methods>;
 }
 -keep class com.getcapacitor.** { *; }
+-keep @com.getcapacitor.annotation.CapacitorPlugin class * { *; }
+-keep class * extends com.getcapacitor.Plugin { *; }
+
+-keep class ee.forgr.biometric.** { *; }
+-keep class androidx.biometric.** { *; }
+
 -keep class okhttp3.** { *; }
 -keep interface okhttp3.** { *; }
 -dontwarn okhttp3.**
