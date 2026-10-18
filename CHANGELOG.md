@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.5.1] - 2026-10-19
+
+### Added
+
+- **Automatic System Language Detection (`i18n`)**:
+  - Automatically detect device and browser language on first launch via `navigator.languages` / `navigator.language` and map to 9 supported locales: Simplified Chinese (`zh`), Indonesian (`id`), Japanese (`ja`), Korean (`ko`), Arabic (`ar`), Russian (`ru`), Tagalog (`tl`), Hindi (`hi`), and English (`en`) fallback (#17).
+  - Synchronize initial detected language directly to Settings dropdown, active UI texts, and native Android `SharedPreferences`.
+  - Added native `Locale.getDefault()` fallback detection in `ShareActivity.java` for Android Share Sheet.
+- **Gallery Tab Visibility Toggle**:
+  - Added option to toggle "Show Gallery Tab" under Settings -> Look & Feel (`mori_show_gallery`).
+  - Hides Gallery from bottom navigation and completely bypasses background disk scanning to save RAM and battery on lower-end devices.
+  - Prevents swipe navigation and routing into gallery view when disabled.
+- **TikTok `tt.site` Shortlink Recognition**:
+  - Added recognition and handling for TikTok `tt.site` shortlink domains across URL cleaners, download managers, batch downloader, and Android share handler.
+- **Full Multilingual Localization for Gallery**:
+  - Added localized strings for gallery filter chips, sort options, and action toasts across all 9 supported languages.
+
+### Changed & Optimized
+
+- **Gallery Rendering & Scrolling Performance**:
+  - Implemented progressive batch rendering (24 items per batch) with `IntersectionObserver` sentinel for smooth infinite scrolling on large media libraries.
+  - Replaced linear history lookups with $O(1)$ `Map` indexing, prioritizing cached history thumbnails before requesting native video frame decodes.
+  - Added CSS `content-visibility: auto` to prevent rendering offscreen media cards.
+- **Startup & Bundle Optimization**:
+  - Converted `pdf-lib` and `pdf.js` to on-demand lazy loading, eliminating heavy synchronous script tags from `index.html` to speed up cold startup.
+  - Enabled R8 full minification and resource shrinking in Android `build.gradle` with tuned ProGuard rules for a leaner APK footprint.
+  - Configured Tauri release profile in `Cargo.toml` (`opt-level = "z"`, LTO, symbol stripping, `codegen-units = 1`) to reduce desktop binary sizes and optimize runtime performance.
+- **Asset Updates**:
+  - Converted all screenshot previews to high-resolution WebP and added Mori CLI mockup to documentation.
+
 ## [4.5.0] - 2026-10-15
 
 ### Added
