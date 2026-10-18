@@ -318,6 +318,8 @@
   border-radius: var(--radius-xl);
   overflow: hidden;
   cursor: pointer;
+  content-visibility: auto;
+  contain-intrinsic-size: 180px 240px;
   transition:
     transform 0.25s ease,
     box-shadow 0.25s ease,

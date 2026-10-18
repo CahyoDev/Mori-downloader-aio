@@ -116,7 +116,12 @@ export function getGalleryScanFolders() {
   return folders;
 }
 
+export function isGalleryEnabled() {
+  return localStorage.getItem("mori_show_gallery") !== "false";
+}
+
 export async function scanGallery(force = false) {
+  if (!isGalleryEnabled()) return [];
   if (activeScanPromise) return activeScanPromise;
   if (!force && galleryItems.length > 0) return galleryItems;
 
@@ -221,6 +226,64 @@ export async function scanGallery(force = false) {
 
 let cachedHistoryList = null;
 let lastHistoryLoadTime = 0;
+let historyPathMap = new Map();
+let historyNameMap = new Map();
+let historyBaseMap = new Map();
+
+function buildHistoryIndices(history) {
+  historyPathMap = new Map();
+  historyNameMap = new Map();
+  historyBaseMap = new Map();
+  if (!Array.isArray(history)) return;
+
+  for (let i = history.length - 1; i >= 0; i--) {
+    const h = history[i];
+    if (!h) continue;
+
+    const addIndex = (rawP, rawN) => {
+      if (rawP) {
+        const p = String(rawP).toLowerCase().trim();
+        if (p) {
+          historyPathMap.set(p, h);
+          const slashIdx = p.lastIndexOf("/");
+          if (slashIdx !== -1) {
+            historyNameMap.set(p.slice(slashIdx + 1), h);
+          }
+        }
+      }
+      if (rawN) {
+        const n = String(rawN).toLowerCase().trim();
+        if (n) {
+          historyNameMap.set(n, h);
+          const base = n.replace(/\.[^.]+$/, "");
+          if (base) historyBaseMap.set(base, h);
+        }
+      }
+    };
+
+    if (h.localUri) addIndex(h.localUri, null);
+
+    if (Array.isArray(h.localFiles)) {
+      for (const f of h.localFiles) {
+        addIndex(f.path || f.uri, f.name || f.title);
+      }
+    }
+
+    if (Array.isArray(h.downloads)) {
+      for (const dl of h.downloads) {
+        addIndex(dl.path || dl.uri, dl.filename || dl.name);
+      }
+    }
+
+    if (h.title) {
+      const cleanHTitle = String(h.title)
+        .toLowerCase()
+        .replace(/[\W_]+/g, " ")
+        .trim();
+      if (cleanHTitle) historyBaseMap.set(cleanHTitle, h);
+    }
+  }
+}
 
 function getCachedHistory() {
   const now = Date.now();
@@ -230,8 +293,10 @@ function getCachedHistory() {
         localStorage.getItem("mori_history") || "[]",
       );
       lastHistoryLoadTime = now;
+      buildHistoryIndices(cachedHistoryList);
     } catch (_) {
       cachedHistoryList = [];
+      buildHistoryIndices([]);
     }
   }
   return cachedHistoryList;
@@ -239,74 +304,31 @@ function getCachedHistory() {
 
 function findHistoryRecord(item, historyList = null) {
   if (!item) return null;
-  const history = historyList || getCachedHistory();
-  if (!Array.isArray(history) || history.length === 0) return null;
+  getCachedHistory();
 
-  const rawPath = String(item.path || "");
-  const rawName = String(item.name || "");
-  const itemPath = rawPath.toLowerCase();
-  const itemName = rawName.toLowerCase();
-  const itemBase = itemName.replace(/\.[^.]+$/, "");
+  const rawPath = String(item.path || "").toLowerCase().trim();
+  const rawName = String(item.name || "").toLowerCase().trim();
+  const itemBase = rawName.replace(/\.[^.]+$/, "");
+
+  // 1. O(1) direct path match
+  if (rawPath && historyPathMap.has(rawPath)) {
+    return historyPathMap.get(rawPath);
+  }
+
+  // 2. O(1) filename match
+  if (rawName && historyNameMap.has(rawName)) {
+    return historyNameMap.get(rawName);
+  }
+
+  // 3. O(1) basename match
+  if (itemBase && historyBaseMap.has(itemBase)) {
+    return historyBaseMap.get(itemBase);
+  }
+
+  // 4. O(1) sanitized title match
   const cleanItemBase = itemBase.replace(/[\W_]+/g, " ").trim();
-
-  for (const h of history) {
-    const hTitle = String(h.title || "").toLowerCase();
-    const cleanHTitle = hTitle.replace(/[\W_]+/g, " ").trim();
-    const hUri = String(h.localUri || "").toLowerCase();
-
-    // 1. Direct path/URI match
-    if (
-      hUri &&
-      (hUri === itemPath ||
-        hUri.endsWith("/" + itemName) ||
-        decodeURI(hUri).endsWith("/" + itemName))
-    ) {
-      return h;
-    }
-
-    // 2. Local files match
-    if (Array.isArray(h.localFiles)) {
-      for (const f of h.localFiles) {
-        const fp = String(f.path || f.uri || "").toLowerCase();
-        const fn = String(f.name || f.title || "").toLowerCase();
-        const fBase = fn.replace(/\.[^.]+$/, "");
-        if (
-          (fp &&
-            (fp === itemPath ||
-              fp.endsWith("/" + itemName) ||
-              decodeURI(fp).endsWith("/" + itemName))) ||
-          (fn && (fn === itemName || fBase === itemBase))
-        ) {
-          return h;
-        }
-      }
-    }
-
-    // 3. Downloads list match
-    if (Array.isArray(h.downloads)) {
-      for (const dl of h.downloads) {
-        const dlPath = String(dl.path || dl.uri || "").toLowerCase();
-        const dlName = String(dl.filename || dl.name || "").toLowerCase();
-        const dlBase = dlName.replace(/\.[^.]+$/, "");
-        if (
-          (dlPath && (dlPath === itemPath || dlPath.endsWith("/" + itemName))) ||
-          (dlName && (dlName === itemName || dlBase === itemBase))
-        ) {
-          return h;
-        }
-      }
-    }
-
-    // 4. Fuzzy title match
-    if (cleanItemBase && cleanHTitle) {
-      if (
-        cleanHTitle === cleanItemBase ||
-        cleanHTitle.includes(cleanItemBase) ||
-        cleanItemBase.includes(cleanHTitle)
-      ) {
-        return h;
-      }
-    }
+  if (cleanItemBase && historyBaseMap.has(cleanItemBase)) {
+    return historyBaseMap.get(cleanItemBase);
   }
 
   return null;
@@ -707,7 +729,15 @@ function loadVideoThumbnailAsync(item, img) {
     return;
   }
 
-  // 2. Native Android / iOS bridge or fallback canvas
+  // 2. High priority: Mori download history cache (instant synchronous cover)
+  const fromHist = getThumbFromHistory(item);
+  if (fromHist) {
+    persistThumb(item.path, fromHist);
+    img.src = fromHist;
+    return;
+  }
+
+  // 3. Native Android / iOS bridge or fallback canvas
   enqueueThumbTask(async (onDone) => {
     try {
       let thumb = null;
@@ -732,15 +762,6 @@ function loadVideoThumbnailAsync(item, img) {
       if (thumb && typeof thumb === "string" && !thumb.startsWith("thumb_")) {
         persistThumb(item.path, thumb);
         img.src = thumb;
-        onDone();
-        return;
-      }
-
-      // 3. Fallback: Mori download history cache
-      const fromHist = getThumbFromHistory(item);
-      if (fromHist) {
-        persistThumb(item.path, fromHist);
-        img.src = fromHist;
         onDone();
         return;
       }
@@ -1134,7 +1155,33 @@ function syncCardFavoriteState(card, item) {
   }
 }
 
-function renderGallery() {
+const BATCH_SIZE = 24;
+let galleryRenderLimit = BATCH_SIZE;
+let galleryScrollObserver = null;
+
+function setupGalleryInfiniteScroll(sentinel) {
+  if (galleryScrollObserver) {
+    galleryScrollObserver.disconnect();
+  }
+  galleryScrollObserver = new IntersectionObserver(
+    (entries) => {
+      if (entries[0]?.isIntersecting) {
+        loadMoreGalleryItems();
+      }
+    },
+    { rootMargin: "350px" },
+  );
+  galleryScrollObserver.observe(sentinel);
+}
+
+function loadMoreGalleryItems() {
+  const items = filteredItems();
+  if (galleryRenderLimit >= items.length) return;
+  galleryRenderLimit += BATCH_SIZE;
+  renderGallery(false);
+}
+
+function renderGallery(resetLimit = false) {
   const page = document.getElementById("galleryPage");
   if (!page) return;
   const empty = page.querySelector(".gallery-empty");
@@ -1152,16 +1199,25 @@ function renderGallery() {
   if (items.length === 0) {
     grid.innerHTML = "";
     empty?.classList.remove("hidden");
+    if (galleryScrollObserver) {
+      galleryScrollObserver.disconnect();
+      galleryScrollObserver = null;
+    }
     return;
   }
   empty?.classList.add("hidden");
 
-  const itemPathSet = new Set(items.map((i) => i.path));
+  if (resetLimit) {
+    galleryRenderLimit = BATCH_SIZE;
+  }
+
+  const visibleItems = items.slice(0, galleryRenderLimit);
+  const visiblePathSet = new Set(visibleItems.map((i) => i.path));
   const existingCards = new Map();
 
   grid.querySelectorAll(".gallery-item").forEach((card) => {
     const p = card.getAttribute("data-path");
-    if (!p || !itemPathSet.has(p) || existingCards.has(p)) {
+    if (!p || !visiblePathSet.has(p) || existingCards.has(p)) {
       card.remove();
     } else {
       existingCards.set(p, card);
@@ -1170,7 +1226,7 @@ function renderGallery() {
 
   // Reorder and append cards without destroying existing DOM nodes
   const frag = document.createDocumentFragment();
-  items.forEach((item) => {
+  visibleItems.forEach((item) => {
     let card = existingCards.get(item.path) || cardCache.get(item.path);
     if (!card) {
       card = buildItem(item);
@@ -1180,7 +1236,40 @@ function renderGallery() {
     cardCache.set(item.path, card);
     frag.appendChild(card);
   });
+
+  // Prune disconnected cards from cardCache to prevent memory leaks on huge galleries
+  if (cardCache.size > 120) {
+    for (const [cp, cCard] of cardCache.entries()) {
+      if (!cCard.isConnected) {
+        stopAllMedia(cCard);
+        cardCache.delete(cp);
+        if (cardCache.size <= 80) break;
+      }
+    }
+  }
+
   grid.appendChild(frag);
+
+  // Setup infinite scroll sentinel
+  let sentinel = grid.querySelector(".gallery-scroll-sentinel");
+  if (items.length > galleryRenderLimit) {
+    if (!sentinel) {
+      sentinel = document.createElement("div");
+      sentinel.className = "gallery-scroll-sentinel";
+      sentinel.style.cssText =
+        "grid-column: 1 / -1; height: 30px; pointer-events: none; opacity: 0;";
+      grid.appendChild(sentinel);
+    } else {
+      grid.appendChild(sentinel);
+    }
+    setupGalleryInfiniteScroll(sentinel);
+  } else if (sentinel) {
+    sentinel.remove();
+    if (galleryScrollObserver) {
+      galleryScrollObserver.disconnect();
+      galleryScrollObserver = null;
+    }
+  }
 }
 
 export function renderGallerySkeleton() {
@@ -1797,7 +1886,7 @@ export function initGallery() {
     chip.addEventListener("click", () => {
       galleryFilter = chip.getAttribute("data-filter") || "all";
       renderGalleryToolbar();
-      renderGallery();
+      renderGallery(true);
     });
   });
 
@@ -1821,7 +1910,7 @@ export function initGallery() {
       sortMenu?.classList.add("hidden");
       sortSelect?.classList.remove("active");
       renderGalleryToolbar();
-      renderGallery();
+      renderGallery(true);
     });
   });
 
@@ -1837,7 +1926,7 @@ export function initGallery() {
     clearTimeout(searchDebounceTimer);
     searchDebounceTimer = setTimeout(() => {
       galleryQuery = searchInput.value.trim();
-      renderGallery();
+      renderGallery(true);
     }, 150);
   });
 }
@@ -1860,6 +1949,7 @@ window.addEventListener("mori_history_updated", () => {
 });
 
 const handleDownloadUpdate = () => {
+  if (!isGalleryEnabled()) return;
   galleryNeedsRescan = true;
   const p = document.getElementById("galleryPage");
   if (p && !p.classList.contains("hidden")) {
@@ -1876,6 +1966,7 @@ window.addEventListener("mori_file_saved", handleDownloadUpdate);
 window.addEventListener("mori_app_resumed", handleDownloadUpdate);
 
 export function refreshGalleryPage() {
+  if (!isGalleryEnabled()) return;
   initGallery();
   renderGalleryToolbar();
   cachedHistoryList = null;
@@ -1887,16 +1978,16 @@ export function refreshGalleryPage() {
     renderGallerySkeleton();
     scanGallery(true).then(() => {
       galleryNeedsRescan = false;
-      renderGallery();
+      renderGallery(true);
     });
   } else {
     // Immediately re-render with updated history favorites without waiting for scan
-    renderGallery();
+    renderGallery(true);
     const prev = [...galleryItems];
     scanGallery(true).then((items) => {
       galleryNeedsRescan = false;
       if (!areItemsEqual(prev, items)) {
-        renderGallery();
+        renderGallery(true);
       }
     });
   }
