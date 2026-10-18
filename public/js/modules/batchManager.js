@@ -93,7 +93,8 @@ export async function analyzeUrlSilent(url, preferServer = "auto") {
     if (
       url.includes("tiktok.com") ||
       url.includes("vt.tiktok.com") ||
-      url.includes("vm.tiktok.com")
+      url.includes("vm.tiktok.com") ||
+      url.includes("tt.site")
     ) {
       setTikTokSource(isServer2 ? "tikdownloader" : "tiktokio");
       data = await scrapeTikTok(url);

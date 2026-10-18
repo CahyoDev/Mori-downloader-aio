@@ -106,7 +106,7 @@ const SERVERS = {
 };
 
 function detectPlatform(url) {
-  if (url.includes("tiktok.com")) return "tiktok";
+  if (url.includes("tiktok.com") || url.includes("tt.site")) return "tiktok";
   if (url.includes("instagram.com")) return "instagram";
   if (url.includes("youtube.com") || url.includes("youtu.be")) return "youtube";
   if (

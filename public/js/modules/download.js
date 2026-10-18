@@ -570,7 +570,7 @@ downloadBtn.addEventListener("click", async () => {
     const preferServer = localStorage.getItem("mori_prefer_server") || "ask";
     if (analyzeCancelled)
       throw Object.assign(new Error("cancelled"), { _isCancelled: true });
-    if (url.includes("tiktok.com")) {
+    if (url.includes("tiktok.com") || url.includes("tt.site")) {
       if (preferServer === "server1") setTikTokSource("tiktokio");
       else if (preferServer === "server2") setTikTokSource("tikdownloader");
       else setTikTokSource(null);

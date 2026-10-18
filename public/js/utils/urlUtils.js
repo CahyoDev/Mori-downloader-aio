@@ -55,7 +55,7 @@ export function cleanUrl(url) {
 
     trackerParams.forEach((p) => u.searchParams.delete(p));
 
-    if (u.hostname.includes("tiktok.com")) {
+    if (u.hostname.includes("tiktok.com") || u.hostname.includes("tt.site")) {
       u.search = ""; // TikTok tracking parameters
     } else if (
       u.hostname.includes("youtube.com") ||
