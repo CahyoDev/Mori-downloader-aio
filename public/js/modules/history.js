@@ -387,7 +387,7 @@ window.addEventListener("mori_file_saved", async (e) => {
               thumbnail: keepOriginalThumb,
               thumbVersion: 3,
               versionCode: 21,
-              versionName: "4.5.0",
+              versionName: "4.5.1",
               thumbRepaired: true,
             };
           }
