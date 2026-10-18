@@ -34,7 +34,7 @@ import {
   CHROME_UA,
 } from "./engine.js";
 
-const APP_VERSION = "1.0.0";
+const APP_VERSION = "1.0.1";
 
 function isNewerVersion(latest, current) {
   if (!latest || !current) return false;

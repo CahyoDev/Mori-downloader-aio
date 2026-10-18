@@ -455,7 +455,7 @@ export const scrapers = loadScraperEngine();
 export function detectPlatform(rawUrl) {
   if (!rawUrl || typeof rawUrl !== "string") return null;
   const url = rawUrl.toLowerCase();
-  if (url.includes("tiktok.com")) return "tiktok";
+  if (url.includes("tiktok.com") || url.includes("tt.site")) return "tiktok";
   if (url.includes("instagram.com")) return "instagram";
   if (url.includes("youtube.com") || url.includes("youtu.be")) return "youtube";
   if (

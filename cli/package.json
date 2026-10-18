@@ -1,6 +1,6 @@
 {
   "name": "@coflyn/mori",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Universal media downloader CLI. Save anything, from anywhere. No watermarks. No tracking.",
   "type": "module",
   "bin": {
