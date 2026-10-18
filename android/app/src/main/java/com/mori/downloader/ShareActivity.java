@@ -167,7 +167,22 @@ public class ShareActivity extends AppCompatActivity {
 
     private void injectConfig() {
         SharedPreferences prefs = getSharedPreferences("CapacitorStorage", Context.MODE_PRIVATE);
-        String lang = prefs.getString("mori_lang", "en");
+        String defaultLang = "en";
+        try {
+            String sysLang = java.util.Locale.getDefault().getLanguage();
+            if (sysLang != null) {
+                String l = sysLang.toLowerCase();
+                if (l.startsWith("zh")) defaultLang = "zh";
+                else if (l.startsWith("id") || l.startsWith("in")) defaultLang = "id";
+                else if (l.startsWith("ja")) defaultLang = "ja";
+                else if (l.startsWith("ko")) defaultLang = "ko";
+                else if (l.startsWith("ar")) defaultLang = "ar";
+                else if (l.startsWith("ru")) defaultLang = "ru";
+                else if (l.startsWith("tl") || l.startsWith("fil")) defaultLang = "tl";
+                else if (l.startsWith("hi")) defaultLang = "hi";
+            }
+        } catch (Exception ignored) {}
+        String lang = prefs.getString("mori_lang", defaultLang);
         String theme = prefs.getString("mori_theme", "dark");
         String font = prefs.getString("mori_font", "display");
         String preferServer = prefs.getString("mori_prefer_server", "ask");

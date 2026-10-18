@@ -1,5 +1,5 @@
 // core.js — konstanta, DOM refs, state bersama
-import { translations } from "../i18n/index.js";
+import { translations, getInitialLanguage } from "../i18n/index.js";
 import { Filesystem } from "../utils/index.js";
 
 export const APP_VERSION = "4.5.0";
@@ -172,7 +172,7 @@ export const hideGuideCheckbox = document.getElementById("hideGuideCheckbox");
 export const closeGuideBtn = document.getElementById("closeGuideBtn");
 export const guideToSettingsBtn = document.getElementById("guideToSettingsBtn");
 
-export let currentLang = localStorage.getItem("mori_lang") || "en";
+export let currentLang = getInitialLanguage();
 export function setCurrentLang(v) {
   currentLang = v;
 }

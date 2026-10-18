@@ -24,14 +24,14 @@ import {
 } from "./scrapers/index.js";
 import { cleanUrl } from "./utils/urlUtils.js";
 import { getUserAgent } from "./utils/index.js";
-import { translations } from "./i18n/index.js";
+import { translations, getInitialLanguage } from "./i18n/index.js";
 import { safeSetHistory } from "./modules/history.js";
 
-let currentLang = localStorage.getItem("mori_lang") || "en";
+let currentLang = getInitialLanguage();
 let lang = translations[currentLang] || translations.en;
 
 function applyShareLanguage() {
-  currentLang = localStorage.getItem("mori_lang") || "en";
+  currentLang = getInitialLanguage();
   lang = translations[currentLang] || translations.en;
   document.documentElement.lang = currentLang;
   document.documentElement.setAttribute(

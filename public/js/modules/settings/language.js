@@ -58,7 +58,9 @@ export function setupCustomSelect(selectId, storageKey, textId, menuId) {
                           ? "off"
                           : storageKey === "mori_toast_dur"
                             ? "3"
-                            : "default";
+                            : storageKey === "mori_lang"
+                              ? currentLang
+                              : "default";
   const currentVal = localStorage.getItem(storageKey) || defaultFallback;
 
   // Update display on load
