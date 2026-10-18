@@ -62,6 +62,14 @@ export function applyUiCorner() {
   document.body.classList.add(`corner-${corner}`);
 }
 
+export function applyGalleryVisibility() {
+  const isEnabled = localStorage.getItem("mori_show_gallery") !== "false";
+  const galleryNavItem = document.querySelector('.nav-item[data-page="gallery"]');
+  if (galleryNavItem) {
+    galleryNavItem.style.display = isEnabled ? "" : "none";
+  }
+}
+
 /**
  * Initializes theme, typography, presets, and toggle listeners
  */
@@ -107,11 +115,43 @@ export function initAppearance() {
     });
   }
 
-  // 3. Apply active visual presets
+  // 3. Show Gallery Tab initialization
+  const showGalleryToggle = document.getElementById("showGalleryToggle");
+  if (showGalleryToggle) {
+    showGalleryToggle.checked =
+      localStorage.getItem("mori_show_gallery") !== "false";
+    applyGalleryVisibility();
+    showGalleryToggle.addEventListener("change", (e) => {
+      const isEnabled = e.target.checked;
+      localStorage.setItem("mori_show_gallery", isEnabled);
+      applyGalleryVisibility();
+      window.dispatchEvent(
+        new CustomEvent("mori_gallery_visibility_changed", {
+          detail: { isEnabled },
+        }),
+      );
+
+      // If user is currently on gallery page and disables it, redirect to home
+      const activeNav = document.querySelector(".nav-item.active");
+      if (!isEnabled && activeNav?.getAttribute("data-page") === "gallery") {
+        document.querySelector('.nav-item[data-page="home"]')?.click();
+      }
+
+      const lang = translations[currentLang] || translations.en;
+      showToast(
+        isEnabled
+          ? lang["toast-gallery-tab-on"] || "Gallery tab enabled"
+          : lang["toast-gallery-tab-off"] || "Gallery tab hidden",
+      );
+    });
+  }
+
+  // 4. Apply active visual presets
   applyColorAccent();
   applyFont();
   applyAnimSpeed();
   applyTextSize();
   applyGlassmorphism();
   applyUiCorner();
+  applyGalleryVisibility();
 }

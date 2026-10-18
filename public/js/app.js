@@ -63,8 +63,10 @@ import "./modules/download.js";
 import "./ui/downloadBubble.js";
 import { initBgAnimation } from "./modules/bgAnimation.js";
 import { refreshGalleryPage } from "./modules/gallery.js";
+import { applyGalleryVisibility } from "./modules/settings/appearance.js";
 
 initBgAnimation();
+applyGalleryVisibility();
 
 // Batch Mode Toggle
 if (batchToggleBtn) {
@@ -195,6 +197,11 @@ window.addEventListener("mori_download_cancelled", refreshHistoryIfVisible);
 const pages = ["home", "gallery", "history", "settings"];
 
 async function switchPage(pageId) {
+  if (pageId === "gallery" && localStorage.getItem("mori_show_gallery") === "false") {
+    switchPage("home");
+    return;
+  }
+
   const isPrivacyOn = localStorage.getItem("mori_privacy_lock") === "true";
   const lockType = localStorage.getItem("mori_lock_type") || "none";
 
@@ -344,13 +351,18 @@ document.addEventListener(
     const activeNavItem = document.querySelector(".nav-item.active");
     if (!activeNavItem) return;
 
-    const currentPage = activeNavItem.getAttribute("data-page");
-    const currentIndex = pages.indexOf(currentPage);
+    const isGalleryOn = localStorage.getItem("mori_show_gallery") !== "false";
+    const activePages = isGalleryOn
+      ? ["home", "gallery", "history", "settings"]
+      : ["home", "history", "settings"];
 
-    if (diffX > 0 && currentIndex < pages.length - 1) {
-      switchPage(pages[currentIndex + 1]);
+    const currentPage = activeNavItem.getAttribute("data-page");
+    const currentIndex = activePages.indexOf(currentPage);
+
+    if (diffX > 0 && currentIndex < activePages.length - 1) {
+      switchPage(activePages[currentIndex + 1]);
     } else if (diffX < 0 && currentIndex > 0) {
-      switchPage(pages[currentIndex - 1]);
+      switchPage(activePages[currentIndex - 1]);
     }
   },
   { passive: true },

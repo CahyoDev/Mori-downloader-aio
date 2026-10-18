@@ -143,6 +143,7 @@ export default {
   "label-all-files-access": "全ファイルへのアクセス",
   "label-clearcache": "キャッシュを消去",
   "label-compact-mode": "コンパクトモード",
+  "label-show-gallery": "ギャラリータブを表示",
   "label-concurrent-downloads": "同時ダウンロード数",
   "label-custom-directory": "保存先ディレクトリ",
   "label-content": "コンテンツ",
@@ -403,6 +404,8 @@ export default {
   "toast-clipboard-empty": "クリップボードが空です",
   "toast-compact-off": "コンパクトモード無効",
   "toast-compact-on": "コンパクトモード有効",
+  "toast-gallery-tab-off": "ギャラリータブを非表示にしました",
+  "toast-gallery-tab-on": "ギャラリータブを有効にしました",
   "toast-connection-lost":
     "接続が切断されました。インターネットを確認してください。",
   "toast-copy-failed": "コピーに失敗しました",
