@@ -1,0 +1,58 @@
+name: Build Android APK
+
+on:
+  workflow_dispatch:        # tombol "Run workflow" manual
+  push:
+    tags:
+      - "v*"                # otomatis saat ada tag baru, mis. v4.5.1-miko
+
+permissions:
+  contents: write           # supaya APK bisa dilampirkan ke Release
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Sync web assets ke Android
+        run: npx cap sync android
+
+      - name: Build APK
+        working-directory: android
+        run: |
+          chmod +x ./gradlew
+          ./gradlew assembleDebug --no-daemon
+
+      - name: Rename APK
+        run: |
+          mkdir -p dist
+          cp android/app/build/outputs/apk/debug/*.apk dist/MIKO.apk
+
+      - name: Upload APK (Artifacts)
+        uses: actions/upload-artifact@v4
+        with:
+          name: MIKO-apk
+          path: dist/MIKO.apk
+
+      - name: Lampirkan ke Release (hanya kalau dari tag)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/MIKO.apk
