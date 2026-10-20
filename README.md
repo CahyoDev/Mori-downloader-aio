@@ -2,7 +2,7 @@
   <img src="assets/icon.png" width="128" alt="Mori Logo">
 </p>
 
-<h1 align="center">Mori</h1>
+<h1 align="center">Miko</h1>
 <p align="center"><em><strong>Save anything, From anywhere.</strong></em></p>
 
 <p align="center">
