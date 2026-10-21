@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import fs from "fs";
+import os from "os";
 import path from "path";
 import { parseArgs } from "node:util";
 import * as p from "@clack/prompts";
@@ -8,12 +9,24 @@ import pc from "picocolors";
 import {
   detectPlatform,
   PLATFORM_SERVERS,
+  getPlatformServers,
   scrapeUrl,
   resolveUrl,
   sanitizeFilename,
   downloadMediaFile,
   checkForOtaUpdate,
   getActiveScraperVersion,
+  getActiveScraprVersion,
+  checkForScraprOtaUpdate,
+  isMoriInstalled,
+  isScraprInstalled,
+  downloadMoriEngine,
+  downloadScraprEngine,
+  uninstallMoriEngine,
+  uninstallScraprEngine,
+  RESOLVER_LINK_PLATFORMS,
+  SHORTLINK_PLATFORMS,
+  writeClipboard,
   getSavedConfig,
   saveConfig,
   openDirectory,
@@ -34,7 +47,7 @@ import {
   CHROME_UA,
 } from "./engine.js";
 
-const APP_VERSION = "1.0.1";
+const APP_VERSION = "1.1.0";
 
 function isNewerVersion(latest, current) {
   if (!latest || !current) return false;
@@ -91,21 +104,203 @@ function renderProgressBar(percent, width = 22) {
   return pc.white("█".repeat(filled)) + pc.dim("░".repeat(empty));
 }
 
-function printBanner(coreVer) {
+function formatPath(filePath) {
+  if (!filePath) return "";
+  const home = os.homedir();
+  if (filePath.startsWith(home)) {
+    return `~${filePath.slice(home.length)}`;
+  }
+  return filePath;
+}
+
+function truncateText(str, max = 72) {
+  if (!str || typeof str !== "string") return "";
+  const single = str.replace(/\r?\n|\r/g, " ").trim();
+  if (single.length <= max) return single;
+  return single.substring(0, max - 3) + "...";
+}
+
+function formatStreamItem(d, i, allDownloads = []) {
+  const typeStr = (d.type || "").toLowerCase();
+  const qualityStr = (d.quality || "").trim();
+
+  const isAudio =
+    typeStr.includes("audio") ||
+    typeStr.includes("music") ||
+    typeStr.includes("mp3");
+
+  const isPhoto = typeStr.includes("photo") || typeStr.includes("image");
+
+  if (isAudio) {
+    const qual =
+      qualityStr &&
+      !qualityStr.toLowerCase().includes("audio") &&
+      !qualityStr.toLowerCase().includes("music") &&
+      !qualityStr.toLowerCase().includes("mp3")
+        ? ` (${qualityStr})`
+        : "";
+    return {
+      label: `MP3 Audio${qual}`,
+      hint: "audio",
+    };
+  }
+
+  if (isPhoto) {
+    return {
+      label: `Photo #${i + 1}`,
+      hint: qualityStr || "image",
+    };
+  }
+
+  // Video stream
+  let resLabel = "";
+  if (qualityStr && qualityStr.toLowerCase() !== "video") {
+    resLabel = qualityStr;
+  } else if (/^\d+p$/i.test(d.type)) {
+    resLabel = d.type;
+  } else if (allDownloads.length > 0) {
+    const videoStreams = allDownloads.filter(
+      (item) =>
+        !item.type?.toLowerCase().includes("audio") &&
+        !item.type?.toLowerCase().includes("music") &&
+        !item.type?.toLowerCase().includes("photo"),
+    );
+    const vIdx = videoStreams.indexOf(d);
+    if (vIdx === 0) resLabel = "HD / Best Quality";
+    else if (vIdx === 1) resLabel = "Standard Quality";
+    else resLabel = `Option ${vIdx + 1}`;
+  } else {
+    resLabel = "Video";
+  }
+
+  const mirrorTag = d.isMirror ? " [Mirror]" : "";
+  return {
+    label: `${resLabel} Video${mirrorTag}`,
+    hint: mirrorTag ? "mirror" : "video",
+  };
+}
+
+const MORI_BANNER = [
+  "███╗   ███╗ ██████╗ ██████╗ ██╗",
+  "████╗ ████║██╔═══██╗██╔══██╗██║",
+  "██╔████╔██║██║   ██║██████╔╝██║",
+  "██║╚██╔╝██║██║   ██║██╔══██╗██║",
+  "██║ ╚═╝ ██║╚██████╔╝██║  ██║██║",
+  "╚═╝     ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚═╝",
+];
+
+function renderBanner() {
+  return MORI_BANNER.map(
+    (l) =>
+      "  " +
+      l
+        .replace(/(█+)/g, pc.bold(pc.cyan("$1")))
+        .replace(/([╗║╚╝═]+)/g, pc.dim(pc.cyan("$1"))),
+  ).join("\n");
+}
+
+function printBanner(coreVer, scraprVer) {
+  console.log("\n" + renderBanner() + "\n");
+  const engines = [];
+  if (coreVer) engines.push(`mori v${coreVer}`);
+  if (scraprVer) engines.push(`scrapr v${scraprVer}`);
+  const engineStr =
+    engines.length > 0 ? engines.join(" • ") : "no engine installed";
   const brand =
     pc.bold(pc.inverse(" MORI ")) +
     " " +
     pc.bold(`v${APP_VERSION}`) +
     " " +
-    pc.dim(`(core v${coreVer})`);
+    pc.dim(`(${engineStr})`);
   const sub = pc.dim(
-    "Save anything, from anywhere. No watermarks. No tracking.",
+    "Save anything, from anywhere. Dual-Engine powered.",
   );
   p.intro(`${brand}\n  ${sub}`);
 }
 
+async function ensureEnginesInstalled() {
+  const moriInstalled = isMoriInstalled();
+  const scraprInstalled = isScraprInstalled();
+
+  if (moriInstalled || scraprInstalled) {
+    return true;
+  }
+
+  p.note(
+    `Welcome to Mori CLI!\n\n` +
+      `Mori is a lightweight CLI wrapper without pre-bundled scraper engines.\n` +
+      `Choose which engine(s) you would like to download to get started:`,
+    pc.bold("First-Time Engine Setup"),
+  );
+
+  const choice = await p.select({
+    message: "Which engine would you like to install?",
+    options: [
+      {
+        value: "both",
+        label: "Both (Mori Core + Scrapr) [Recommended]",
+        hint: "All 27 platforms: social media, audio, file hosts & unshorteners",
+      },
+      {
+        value: "scrapr",
+        label: "Scrapr Engine only (~2.7 MB)",
+        hint: "Stand-alone engine with file host resolvers (MediaFire, Sfile, GDrive, etc.)",
+      },
+      {
+        value: "mori",
+        label: "Mori Engine only (~80 KB)",
+        hint: "Ultra lightweight core scrapers (TikTok, IG, YouTube, Spotify, X, etc.)",
+      },
+      {
+        value: "skip",
+        label: "Skip for now",
+        hint: "Install manually later via /engine",
+      },
+    ],
+    initialValue: "both",
+  });
+
+  if (p.isCancel(choice) || choice === "skip") {
+    p.log.warn("Setup skipped. You will need to install an engine before scraping.");
+    return false;
+  }
+
+  if (choice === "both" || choice === "mori") {
+    const s = p.spinner();
+    s.start(pc.dim("Installing Mori Core Engine (~80 KB)..."));
+    try {
+      const res = await downloadMoriEngine();
+      s.stop(pc.bold(`✔ Mori Core Engine installed (v${res.version}).`));
+    } catch (err) {
+      s.stop(pc.bold(`✕ Failed to install Mori Engine: ${err.message}`));
+    }
+  }
+
+  if (choice === "both" || choice === "scrapr") {
+    const s = p.spinner();
+    s.start(pc.dim("Installing Scrapr Engine (~2.7 MB)..."));
+    try {
+      const res = await downloadScraprEngine();
+      s.stop(pc.bold(`✔ Scrapr Engine installed (v${res.version}).`));
+    } catch (err) {
+      s.stop(pc.bold(`✕ Failed to install Scrapr Engine: ${err.message}`));
+    }
+  }
+
+  const defEngine = choice === "both" ? "auto" : choice;
+  saveConfig({ defaultEngine: defEngine });
+
+  p.log.message(
+    `${pc.bold("● Default engine set:")} ${pc.white(defEngine)} ${pc.dim("(change anytime with /engine)")}`,
+  );
+
+  return isMoriInstalled() || isScraprInstalled();
+}
+
 function printHelp() {
   console.log(`
+${renderBanner()}
+
 ${pc.bold(pc.inverse(" MORI CLI "))} ${pc.bold(`v${APP_VERSION}`)}
 
 ${pc.bold("USAGE:")}
@@ -113,20 +308,24 @@ ${pc.bold("USAGE:")}
   ${pc.white("npx @coflyn/mori")} ${pc.dim("[URL]")} ${pc.dim("[OPTIONS]")}
 
 ${pc.bold("OPTIONS:")}
-  ${pc.white("-o, --output <dir>")}   Destination folder (default: ${pc.dim("~/Downloads/Mori")})
-  ${pc.white("-s, --server <1|2>")}    Choose scraper server (TikTok, IG, YouTube, X, Spotify)
-  ${pc.white("-a, --audio")}           Download audio-only stream (MP3/M4A)
-  ${pc.white("-p, --pdf")}             Compile photo album directly into a single PDF
-  ${pc.white("-c, --clip")}            Auto-fetch link from system clipboard
-  ${pc.white("-y, --yes")}            Download best/first available stream automatically
-  ${pc.white("-i, --info")}           Inspect and display media details only
-  ${pc.white("-u, --update")}         Check and pull latest OTA scraper patch
-  ${pc.white("-h, --help")}           Show this documentation
-  ${pc.white("-v, --version")}        Print version number
+  ${pc.white("-o, --output <dir>")}             Destination folder (default: ${pc.dim("~/Downloads/Mori")})
+  ${pc.white("-e, --engine <auto|mori|scrapr>")}  Scraper engine choice (default: ${pc.dim("auto")})
+  ${pc.white("-s, --server <1|2>")}              Choose scraper server (TikTok, IG, YouTube, X, Spotify)
+  ${pc.white("-a, --audio")}                     Download audio-only stream (MP3/M4A)
+  ${pc.white("-p, --pdf")}                       Compile photo album directly into a single PDF
+  ${pc.white("-c, --clip")}                      Auto-fetch link from system clipboard
+  ${pc.white("-y, --yes")}                       Download best/first available stream automatically
+  ${pc.white("-i, --info")}                      Inspect and display media details only
+  ${pc.white("-u, --update")}                    Check and pull latest OTA scraper patches
+  ${pc.white("-h, --help")}                      Show this documentation
+  ${pc.white("-v, --version")}                   Print version number
 
-${pc.bold("SUPPORTED PLATFORMS (16):")}
-  ${pc.dim("TikTok • Instagram • YouTube • Twitter/X • Spotify • Pinterest • Facebook")}
-  ${pc.dim("Bilibili • Reddit • RedNote • Threads • Pixiv • Bandcamp • Apple Music • Douyin • TeraBox")}
+${pc.bold("SUPPORTED PLATFORMS (27 • DUAL-ENGINE):")}
+  ${pc.dim("Social & Video:")}  TikTok • Instagram • YouTube • Twitter/X • Facebook • Douyin
+                  Bilibili • Threads • RedNote • Reddit • Pixiv • Doodstream
+  ${pc.dim("Music & Audio :")}  Spotify • SoundCloud • Apple Music • Bandcamp
+  ${pc.dim("Cloud & Files :")}  TeraBox • MediaFire • Sfile • Catbox • Pixeldrain • Krakenfiles • GDrive
+  ${pc.dim("Resolvers     :")}  SafeLinkU • Sub2Unlock • Rekonise • Link Unshortener
 
 ${pc.bold("EXAMPLES:")}
   ${pc.dim("# Interactive")}
@@ -135,13 +334,13 @@ ${pc.bold("EXAMPLES:")}
   # Download link directly from clipboard
   mori --clip
 
+  # Use Scrapr engine explicitly
+  mori https://www.mediafire.com/file/... -e scrapr
+
   # Download audio-only (MP3)
-  mori https://youtu.be/dQw4w9WgXcQ -a
+  mori https://soundcloud.com/... -a
 
-  # Direct link with Server 2
-  mori https://www.tiktok.com/@user/video/123456789 -s 2
-
-  # Check OTA scraper updates
+  # Check OTA updates for both engines
   mori --update
 `);
 }
@@ -163,16 +362,31 @@ async function runConcurrentPool(items, concurrency, fn) {
 }
 
 async function processDownloadItem({ item, meta, outputDir, index, total }) {
+  let detectedExt = "";
+  const rawFilename = item.filename || meta.filename;
+  if (rawFilename && path.extname(rawFilename)) {
+    detectedExt = path.extname(rawFilename).replace(/^\./, "");
+  } else if (item.url) {
+    try {
+      const uPath = new URL(item.url).pathname;
+      const uExt = path.extname(uPath).replace(/^\./, "");
+      if (uExt && uExt.length <= 5 && !uExt.includes("/")) detectedExt = uExt;
+    } catch (_) {}
+  }
+
   const ext =
-    item.type?.toLowerCase().includes("mp3") ||
+    detectedExt ||
+    (item.type?.toLowerCase().includes("mp3") ||
     item.type?.toLowerCase().includes("audio")
       ? "mp3"
       : item.type?.toLowerCase().includes("photo") ||
           item.type?.toLowerCase().includes("image")
         ? "jpg"
-        : "mp4";
+        : "mp4");
 
-  let baseTitle = meta.title || "Media";
+  let baseTitle = rawFilename
+    ? path.basename(rawFilename, path.extname(rawFilename))
+    : (meta.title || "Media");
   if (total > 1) {
     baseTitle = `${baseTitle}_${index + 1}`;
   }
@@ -210,7 +424,7 @@ async function processDownloadItem({ item, meta, outputDir, index, total }) {
 
     process.stdout.write("\r\x1b[2K");
     p.log.message(
-      `${pc.bold("● Saved:")} ${pc.bold(path.basename(destPath))} ${pc.dim(`(${path.relative(process.cwd(), destPath)})`)}`,
+      `${pc.bold("● Saved:")} ${pc.bold(path.basename(destPath))} ${pc.dim(`(${formatPath(destPath)})`)}`,
     );
     addToHistory({
       url: meta.url || "",
@@ -241,9 +455,11 @@ async function handleScrapeAndDownload(targetUrl, options) {
   }
 
   const savedConfig = getSavedConfig();
-  // Dual Server Selection prompt for supported platforms
+  const engineChoice = options.engine || savedConfig.defaultEngine || "auto";
+
+  // Server Selection prompt for supported platforms based on active engine
   let serverChoice = options.server || savedConfig.defaultServer;
-  const serverList = PLATFORM_SERVERS[platform];
+  const serverList = getPlatformServers(platform, engineChoice);
   const isInteractive = Boolean(process.stdin.isTTY);
   if (
     (!serverChoice || serverChoice === "auto") &&
@@ -273,7 +489,7 @@ async function handleScrapeAndDownload(targetUrl, options) {
 
   let media;
   try {
-    media = await scrapeUrl(targetUrl, serverChoice || "auto");
+    media = await scrapeUrl(targetUrl, serverChoice || "auto", engineChoice);
     media.url = targetUrl;
     s.stop(pc.dim("Link analyzed."));
   } catch (err) {
@@ -281,20 +497,117 @@ async function handleScrapeAndDownload(targetUrl, options) {
     return false;
   }
 
+  const serverTag = media.server ? ` • ${media.server}` : "";
+  const engineBadge =
+    media.engine === "scrapr"
+      ? media.fallbackFromMori
+        ? pc.yellow(`[Scrapr • Fallback${serverTag}]`)
+        : pc.cyan(`[Scrapr Engine${serverTag}]`)
+      : pc.green(`[Mori Engine${serverTag}]`);
+
+  // Direct Link / Resolver Platforms (catbox, pixeldrain, sfl.gl, mediafire, sfile, etc.)
+  if (RESOLVER_LINK_PLATFORMS.has(media.platform)) {
+    // If it's a multi-file collection (e.g. catbox collection, pixeldrain list)
+    if (
+      media.type === "album" &&
+      Array.isArray(media.downloads) &&
+      media.downloads.length > 1
+    ) {
+      const urls = media.downloads.map((d) => d.url).filter(Boolean);
+      const urlText = urls.join("\n");
+      if (urlText) {
+        await writeClipboard(urlText);
+      }
+
+      const cardLines = [
+        `${pc.dim("Title   :")} ${truncateText(media.title, 65) || "Collection Album"}`,
+        `${pc.dim("Engine  :")} ${engineBadge}`,
+        `${pc.dim("Files   :")} ${urls.length} item(s)`,
+      ];
+      p.note(cardLines.join("\n"), pc.bold(media.platform.toUpperCase()));
+
+      if (urls.length) {
+        p.log.success(
+          `${pc.bold(`✔ ${urls.length} URLs copied to clipboard:`)}`,
+        );
+        urls.slice(0, 5).forEach((u, i) => {
+          p.log.message(`  ${pc.dim(`[${i + 1}]`)} ${pc.cyan(u)}`);
+        });
+        if (urls.length > 5) {
+          p.log.message(`  ${pc.dim(`... and ${urls.length - 5} more`)}`);
+        }
+      }
+
+      addToHistory({
+        url: targetUrl,
+        title: media.title || targetUrl,
+        platform: media.platform,
+        filename: "",
+        path: urls[0] || "",
+        bytes: 0,
+      });
+
+      return true;
+    }
+
+    const directUrl =
+      media.destinationUrl ||
+      media.url ||
+      media.downloads?.[0]?.url ||
+      "";
+
+    if (directUrl) {
+      await writeClipboard(directUrl);
+    }
+
+    const cardLines = [
+      `${pc.dim("Title   :")} ${truncateText(media.title || media.filename, 65) || "Direct / Resolved Link"}`,
+      `${pc.dim("Engine  :")} ${engineBadge}`,
+      `${pc.dim("URL     :")} ${truncateText(directUrl, 65)}`,
+    ];
+    if (media.size && media.size !== "Unknown") {
+      cardLines.push(`${pc.dim("Size    :")} ${pc.white(media.size)}`);
+    }
+    p.note(cardLines.join("\n"), pc.bold(media.platform.toUpperCase()));
+
+    if (directUrl) {
+      p.log.success(
+        `${pc.bold("✔ URL copied to clipboard:")} ${pc.underline(pc.cyan(directUrl))}`,
+      );
+    }
+
+    addToHistory({
+      url: targetUrl,
+      title: media.title || media.filename || directUrl,
+      platform: media.platform,
+      filename: media.filename || "",
+      path: directUrl,
+      bytes: 0,
+    });
+
+    return true;
+  }
+
   // Metadata card with Platform name as title (e.g. TIKTOK, INSTAGRAM)
   const infoLines = [
-    `${pc.dim("Title   :")} ${media.title || "Untitled"}`,
-    `${pc.dim("Creator :")} ${media.author || "Creator"}`,
-    `${pc.dim("Streams :")} ${media.downloads?.length || 0} option(s)`,
+    `${pc.dim("Title   :")} ${truncateText(media.title, 68) || "Untitled"}`,
+    `${pc.dim("Creator :")} ${truncateText(media.author, 40) || "Creator"}`,
+    `${pc.dim("Engine  :")} ${engineBadge}`,
   ];
+  if (media.viaResolver) {
+    infoLines.push(
+      `${pc.dim("Via     :")} ${pc.magenta(media.viaResolver.toUpperCase())} ${pc.dim(`(${media.originalShortUrl || ""})`)}`,
+    );
+  }
+  infoLines.push(`${pc.dim("Streams :")} ${media.downloads?.length || 0} option(s)`);
   p.note(infoLines.join("\n"), pc.bold(media.platform.toUpperCase()));
 
   if (options.info) {
     if (media.downloads?.length) {
-      const streamLines = media.downloads.map(
-        (d, idx) =>
-          `  ${pc.bold(`[${idx + 1}]`)} ${pc.white(d.type || "Stream")} ${d.quality ? pc.dim(`(${d.quality})`) : ""} ${d.isMirror ? pc.dim("[Mirror]") : ""}`,
-      );
+      const streamLines = media.downloads.map((d, idx) => {
+        const item = formatStreamItem(d, idx, media.downloads);
+        return `  ${pc.bold(`[${idx + 1}]`)} ${pc.white(item.label)}`;
+      });
       p.note(streamLines.join("\n"), pc.dim("Available Streams"));
     }
     return true;
@@ -664,11 +977,14 @@ async function handleScrapeAndDownload(targetUrl, options) {
     if (downloads.length > 1) {
       const formatChoice = await p.select({
         message: "Select stream:",
-        options: downloads.map((d, i) => ({
-          value: i,
-          label: pc.bold(d.type || `Stream ${i + 1}`),
-          hint: d.quality || (d.isMirror ? "Mirror" : ""),
-        })),
+        options: downloads.map((d, i) => {
+          const item = formatStreamItem(d, i, downloads);
+          return {
+            value: i,
+            label: pc.bold(item.label),
+            hint: item.hint ? pc.dim(item.hint) : undefined,
+          };
+        }),
       });
 
       if (p.isCancel(formatChoice)) {
@@ -695,6 +1011,7 @@ async function main() {
     args: process.argv.slice(2),
     options: {
       output: { type: "string", short: "o" },
+      engine: { type: "string", short: "e" },
       server: { type: "string", short: "s" },
       audio: { type: "boolean", short: "a", default: false },
       pdf: { type: "boolean", short: "p", default: false },
@@ -715,26 +1032,65 @@ async function main() {
   }
 
   if (values.version) {
-    console.log(
-      `Mori CLI v${APP_VERSION} (core v${getActiveScraperVersion()})`,
-    );
+    const core = getActiveScraperVersion();
+    const scrapr = getActiveScraprVersion();
+    const parts = [];
+    if (core) parts.push(`mori core v${core}`);
+    if (scrapr) parts.push(`scrapr v${scrapr}`);
+    const engStr = parts.length > 0 ? ` (${parts.join(" • ")})` : " (no engines installed)";
+    console.log(`Mori CLI v${APP_VERSION}${engStr}`);
     process.exit(0);
   }
 
   // Handle manual OTA update flag
   if (values.update) {
+    const moriInst = isMoriInstalled();
+    const scraprInst = isScraprInstalled();
+
+    if (!moriInst && !scraprInst) {
+      p.log.warn("No scraper engines installed yet. Run 'mori' to set up engines.");
+      process.exit(0);
+    }
+
     const s = p.spinner();
-    s.start(pc.dim("Checking remote scraper patch..."));
+    s.start(pc.dim("Checking remote scraper updates..."));
     try {
-      const res = await checkForOtaUpdate(true);
-      if (res.updated) {
-        s.stop(
-          pc.bold(`✔ Scrapers updated to v${res.newVersion}`) +
-            (res.changelog ? pc.dim(` — ${res.changelog}`) : ""),
+      const [moriRes, scraprRes] = await Promise.allSettled([
+        moriInst ? checkForOtaUpdate(true) : Promise.resolve({ notInstalled: true }),
+        scraprInst ? checkForScraprOtaUpdate(true) : Promise.resolve({ notInstalled: true }),
+      ]);
+
+      const moriUpdate = moriRes.status === "fulfilled" ? moriRes.value : null;
+      const scraprUpdate =
+        scraprRes.status === "fulfilled" ? scraprRes.value : null;
+
+      const lines = [];
+      if (moriUpdate?.updated) {
+        lines.push(
+          pc.bold(`✔ Mori Core updated to v${moriUpdate.newVersion}`) +
+            (moriUpdate.changelog ? pc.dim(` — ${moriUpdate.changelog}`) : ""),
         );
-      } else {
-        s.stop(pc.dim(`Scrapers already up to date (v${res.currentVersion}).`));
+      } else if (moriInst && moriUpdate) {
+        lines.push(
+          pc.dim(
+            `Mori Core is up to date (v${moriUpdate.currentVersion || getActiveScraperVersion()}).`,
+          ),
+        );
       }
+
+      if (scraprUpdate?.updated) {
+        lines.push(
+          pc.bold(`✔ Scrapr Engine updated to v${scraprUpdate.newVersion}`),
+        );
+      } else if (scraprInst && scraprUpdate) {
+        lines.push(
+          pc.dim(
+            `Scrapr Engine is up to date (v${scraprUpdate.currentVersion || getActiveScraprVersion()}).`,
+          ),
+        );
+      }
+
+      s.stop(lines.join("\n"));
     } catch (err) {
       s.stop(pc.bold(`✕ OTA check failed: ${err.message}`));
     }
@@ -742,20 +1098,42 @@ async function main() {
   }
 
   const coreVer = getActiveScraperVersion();
-  printBanner(coreVer);
+  const scraprVer = getActiveScraprVersion();
+  printBanner(coreVer, scraprVer);
 
-  // Background non-blocking silent OTA check (timeout 2s)
-  checkForOtaUpdate(false)
-    .then((ota) => {
-      if (ota?.updated) {
-        p.log.message(
-          pc.dim(
-            `● New scraper patch installed in background: v${ota.newVersion}`,
-          ),
-        );
-      }
-    })
-    .catch(() => {});
+  // Check if first-run engine setup is required
+  if (!isMoriInstalled() && !isScraprInstalled()) {
+    await ensureEnginesInstalled();
+  }
+
+  // Background non-blocking silent OTA check (only for installed engines)
+  if (isMoriInstalled()) {
+    checkForOtaUpdate(false)
+      .then((ota) => {
+        if (ota?.updated) {
+          p.log.message(
+            pc.dim(
+              `● New Mori Core patch installed in background: v${ota.newVersion}`,
+            ),
+          );
+        }
+      })
+      .catch(() => {});
+  }
+
+  if (isScraprInstalled()) {
+    checkForScraprOtaUpdate(false)
+      .then((scraprOta) => {
+        if (scraprOta?.updated) {
+          p.log.message(
+            pc.dim(
+              `● New Scrapr Engine bundle installed in background: v${scraprOta.newVersion}`,
+            ),
+          );
+        }
+      })
+      .catch(() => {});
+  }
 
   const cliUpdatePromise = checkCliUpdate();
 
@@ -859,12 +1237,13 @@ async function main() {
           case "platform":
           case "platforms": {
             const platformList = [
-              `${pc.bold("Video  :")} TikTok, Douyin, YouTube, Instagram, Facebook, Bilibili, Reddit, Threads, Twitter/X`,
-              `${pc.bold("Audio  :")} Spotify, Apple Music, Bandcamp`,
-              `${pc.bold("Photo  :")} Pinterest, Pixiv, RedNote (Xiaohongshu)`,
-              `${pc.bold("Cloud  :")} TeraBox (1024tera, nephobox, etc.)`,
+              `${pc.bold("Social/Video:")} TikTok, Douyin, YouTube, Instagram, Facebook, Bilibili, Reddit, Threads, Twitter/X, Doodstream`,
+              `${pc.bold("Music/Audio :")} Spotify, SoundCloud, Apple Music, Bandcamp`,
+              `${pc.bold("Photo/Art   :")} Pinterest, Pixiv, RedNote (Xiaohongshu)`,
+              `${pc.bold("Cloud/Files :")} TeraBox, MediaFire, Sfile, Catbox, Pixeldrain, Krakenfiles, Google Drive`,
+              `${pc.bold("Resolvers   :")} SafeLinkU, Sub2Unlock, Rekonise, Link Unshortener`,
             ];
-            p.note(platformList.join("\n"), pc.dim("Supported Platforms (16)"));
+            p.note(platformList.join("\n"), pc.dim("Supported Platforms (27 • Dual-Engine)"));
             break;
           }
 
@@ -1169,6 +1548,190 @@ async function main() {
             break;
           }
 
+          case "engine": {
+            const moriInst = isMoriInstalled();
+            const scraprInst = isScraprInstalled();
+            const currentPref = getSavedConfig().defaultEngine || "auto";
+
+            const options = [
+              {
+                value: "auto",
+                label: "Auto (Recommended)",
+                hint: `Cascade engines • Mori: ${moriInst ? "v" + (getActiveScraperVersion() || "installed") : "missing"} • Scrapr: ${scraprInst ? "v" + (getActiveScraprVersion() || "installed") : "missing"}`,
+              },
+              {
+                value: "mori",
+                label: "Mori Engine",
+                hint: `Core browser scrapers ~80 KB • ${moriInst ? "Installed (v" + (getActiveScraperVersion() || "1.0.0") + ")" : "Not installed"}`,
+              },
+              {
+                value: "scrapr",
+                label: "Scrapr Engine",
+                hint: `Resolvers & scrapers ~2.7 MB • ${scraprInst ? "Installed (v" + (getActiveScraprVersion() || "1.3.1") + ")" : "Not installed"}`,
+              },
+            ];
+
+            if (!moriInst || !scraprInst) {
+              options.push({
+                value: "install_missing",
+                label: "Install Missing Engine...",
+                hint: !moriInst && !scraprInst ? "Both missing" : !moriInst ? "Install Mori" : "Install Scrapr",
+              });
+            }
+
+            options.push({
+              value: "manage",
+              label: "Manage Engines (Reinstall / Uninstall)...",
+              hint: "Re-download or remove engines",
+            });
+
+            const choice = await p.select({
+              message: "Select extraction engine preference:",
+              options,
+              initialValue: currentPref,
+            });
+
+            if (p.isCancel(choice)) break;
+
+            if (choice === "install_missing") {
+              if (!moriInst) {
+                const s = p.spinner();
+                s.start(pc.dim("Installing Mori Core Engine (~80 KB)..."));
+                try {
+                  const res = await downloadMoriEngine();
+                  s.stop(pc.bold(`✔ Mori Core Engine installed (v${res.version}).`));
+                } catch (err) {
+                  s.stop(pc.bold(`✕ Failed: ${err.message}`));
+                }
+              }
+              if (!scraprInst) {
+                const s = p.spinner();
+                s.start(pc.dim("Installing Scrapr Engine (~2.7 MB)..."));
+                try {
+                  const res = await downloadScraprEngine();
+                  s.stop(pc.bold(`✔ Scrapr Engine installed (v${res.version}).`));
+                } catch (err) {
+                  s.stop(pc.bold(`✕ Failed: ${err.message}`));
+                }
+              }
+              break;
+            }
+
+            if (choice === "manage") {
+              const mgmtChoice = await p.select({
+                message: "Engine Management:",
+                options: [
+                  {
+                    value: "reinstall_mori",
+                    label: "Reinstall Mori Engine (~80 KB)",
+                    hint: moriInst ? "Re-fetch latest bundle" : "Install",
+                  },
+                  {
+                    value: "reinstall_scrapr",
+                    label: "Reinstall Scrapr Engine (~2.7 MB)",
+                    hint: scraprInst ? "Re-fetch latest bundle" : "Install",
+                  },
+                  ...(moriInst
+                    ? [
+                        {
+                          value: "uninstall_mori",
+                          label: "Uninstall Mori Engine",
+                          hint: "Delete ~/.mori/scrapers-bundle.js",
+                        },
+                      ]
+                    : []),
+                  ...(scraprInst
+                    ? [
+                        {
+                          value: "uninstall_scrapr",
+                          label: "Uninstall Scrapr Engine",
+                          hint: "Delete ~/.mori/scrapr/",
+                        },
+                      ]
+                    : []),
+                  { value: "cancel", label: pc.dim("Cancel") },
+                ],
+              });
+
+              if (p.isCancel(mgmtChoice) || mgmtChoice === "cancel") break;
+
+              if (mgmtChoice === "reinstall_mori") {
+                const s = p.spinner();
+                s.start(pc.dim("Downloading Mori Engine..."));
+                try {
+                  const res = await downloadMoriEngine();
+                  s.stop(pc.bold(`✔ Mori Engine installed (v${res.version}).`));
+                } catch (err) {
+                  s.stop(pc.bold(`✕ Failed: ${err.message}`));
+                }
+              } else if (mgmtChoice === "reinstall_scrapr") {
+                const s = p.spinner();
+                s.start(pc.dim("Downloading Scrapr Engine..."));
+                try {
+                  const res = await downloadScraprEngine();
+                  s.stop(pc.bold(`✔ Scrapr Engine installed (v${res.version}).`));
+                } catch (err) {
+                  s.stop(pc.bold(`✕ Failed: ${err.message}`));
+                }
+              } else if (mgmtChoice === "uninstall_mori") {
+                uninstallMoriEngine();
+                p.log.message(pc.dim("✔ Mori Engine uninstalled."));
+              } else if (mgmtChoice === "uninstall_scrapr") {
+                uninstallScraprEngine();
+                p.log.message(pc.dim("✔ Scrapr Engine uninstalled."));
+              }
+              break;
+            }
+
+            // If selected mori but not installed
+            if (choice === "mori" && !moriInst) {
+              const confirmDl = await p.confirm({
+                message: "Mori Engine is not installed. Download now (~80 KB)?",
+                initialValue: true,
+              });
+              if (!p.isCancel(confirmDl) && confirmDl) {
+                const s = p.spinner();
+                s.start(pc.dim("Downloading Mori Engine..."));
+                try {
+                  const res = await downloadMoriEngine();
+                  s.stop(pc.bold(`✔ Mori Engine installed (v${res.version}).`));
+                } catch (err) {
+                  s.stop(pc.bold(`✕ Failed: ${err.message}`));
+                  break;
+                }
+              } else {
+                break;
+              }
+            }
+
+            // If selected scrapr but not installed
+            if (choice === "scrapr" && !scraprInst) {
+              const confirmDl = await p.confirm({
+                message: "Scrapr Engine is not installed. Download now (~2.7 MB)?",
+                initialValue: true,
+              });
+              if (!p.isCancel(confirmDl) && confirmDl) {
+                const s = p.spinner();
+                s.start(pc.dim("Downloading Scrapr Engine..."));
+                try {
+                  const res = await downloadScraprEngine();
+                  s.stop(pc.bold(`✔ Scrapr Engine installed (v${res.version}).`));
+                } catch (err) {
+                  s.stop(pc.bold(`✕ Failed: ${err.message}`));
+                  break;
+                }
+              } else {
+                break;
+              }
+            }
+
+            saveConfig({ defaultEngine: choice });
+            p.log.message(
+              `${pc.bold("● Default engine set:")} ${pc.white(choice)}`,
+            );
+            break;
+          }
+
           case "clip":
           case "paste": {
             const s = p.spinner();
@@ -1299,9 +1862,11 @@ async function main() {
             const cfg = getSavedConfig();
             const cfgLines = [
               `${pc.bold("Download Dir  :")} ${pc.white(currentOutputDir)}`,
+              `${pc.bold("Default Engine:")} ${pc.white(cfg.defaultEngine || "auto")}`,
               `${pc.bold("Default Server:")} ${pc.white(cfg.defaultServer || "auto")}`,
               `${pc.bold("CLI Version   :")} ${pc.white(`v${APP_VERSION}`)}`,
-              `${pc.bold("Core Version  :")} ${pc.white(`v${getActiveScraperVersion()}`)}`,
+              `${pc.bold("Mori Core Ver :")} ${pc.white(`v${getActiveScraperVersion()}`)}`,
+              `${pc.bold("Scrapr Ver    :")} ${pc.white(`v${getActiveScraprVersion()}`)}`,
               `${pc.bold("Config Path   :")} ${pc.dim(CONFIG_PATH)}`,
             ];
             p.note(cfgLines.join("\n"), pc.dim("Active Configuration"));
@@ -1404,7 +1969,14 @@ async function main() {
             s.start(pc.dim("Checking for updates..."));
             try {
               const cliVer = await checkCliUpdate();
-              const ota = await checkForOtaUpdate(true);
+              const [moriRes, scraprRes] = await Promise.allSettled([
+                isMoriInstalled()
+                  ? checkForOtaUpdate(true)
+                  : Promise.resolve({ notInstalled: true }),
+                isScraprInstalled()
+                  ? checkForScraprOtaUpdate(true)
+                  : Promise.resolve({ notInstalled: true }),
+              ]);
 
               s.stop(pc.bold("Update Check:"));
 
@@ -1420,15 +1992,44 @@ async function main() {
                 );
               }
 
-              if (ota.updated) {
+              const moriUpdate =
+                moriRes.status === "fulfilled" ? moriRes.value : null;
+              const scraprUpdate =
+                scraprRes.status === "fulfilled" ? scraprRes.value : null;
+
+              if (moriUpdate?.notInstalled) {
                 p.log.step(
-                  pc.bold(`✔ Scrapers updated to v${ota.newVersion}`) +
-                    (ota.changelog ? pc.dim(` — ${ota.changelog}`) : ""),
+                  pc.dim("Mori Engine: Not installed (install with /engine)."),
                 );
-              } else {
+              } else if (moriUpdate?.updated) {
+                p.log.step(
+                  pc.bold(`✔ Mori Core updated to v${moriUpdate.newVersion}`) +
+                    (moriUpdate.changelog
+                      ? pc.dim(` — ${moriUpdate.changelog}`)
+                      : ""),
+                );
+              } else if (moriUpdate) {
                 p.log.step(
                   pc.dim(
-                    `Scraper engine is up to date (v${ota.currentVersion}).`,
+                    `Mori Core is up to date (v${moriUpdate.currentVersion || getActiveScraperVersion()}).`,
+                  ),
+                );
+              }
+
+              if (scraprUpdate?.notInstalled) {
+                p.log.step(
+                  pc.dim("Scrapr Engine: Not installed (install with /engine)."),
+                );
+              } else if (scraprUpdate?.updated) {
+                p.log.step(
+                  pc.bold(
+                    `✔ Scrapr Engine updated to v${scraprUpdate.newVersion}`,
+                  ),
+                );
+              } else if (scraprUpdate) {
+                p.log.step(
+                  pc.dim(
+                    `Scrapr Engine is up to date (v${scraprUpdate.currentVersion || getActiveScraprVersion()}).`,
                   ),
                 );
               }
@@ -1469,7 +2070,7 @@ async function main() {
           case "clear":
           case "cls": {
             console.clear();
-            printBanner(getActiveScraperVersion());
+            printBanner(getActiveScraperVersion(), getActiveScraprVersion());
             break;
           }
 
@@ -1484,15 +2085,16 @@ async function main() {
               `${pc.bold("/info [url]")}    Inspect media details without downloading`,
               `${pc.bold("/retry")}         Re-download the last link processed`,
               `${pc.bold("/batch")}         Bulk download multiple links at once`,
-              `${pc.bold("/platform")}      List all 16 supported media platforms`,
+              `${pc.bold("/platform")}      List all 27 supported media platforms`,
               `${pc.bold("/dir")}           View or set download directory (persistent)`,
               `${pc.bold("/open")}          Open download folder in file manager`,
+              `${pc.bold("/engine")}        Set default extraction engine (auto/mori/scrapr)`,
               `${pc.bold("/server")}        Set default scraper server (auto/1/2)`,
               `${pc.bold("/history [num]")}  View or redownload history item (/history 1, /history clear)`,
               `${pc.bold("/delete [num]")}   Delete downloaded file from disk and history`,
               `${pc.bold("/stats")}         View total downloads & storage statistics`,
               `${pc.bold("/config")}        Show active Mori configuration`,
-              `${pc.bold("/update")}        Check and apply remote OTA scraper patch`,
+              `${pc.bold("/update")}        Check and apply remote OTA scraper patches`,
               `${pc.bold("/reset")}         Factory reset Mori config, cache, & history`,
               `${pc.bold("/clear")}         Clear screen and reprint header`,
               `${pc.bold("/exit, /q")}      Exit Mori CLI`,

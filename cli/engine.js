@@ -3,8 +3,10 @@ import os from "os";
 import path from "path";
 import { exec, execSync } from "child_process";
 import { fileURLToPath } from "url";
+import { createRequire } from "module";
 import { DOMParser } from "linkedom";
 
+const require = createRequire(import.meta.url);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT_DIR = path.resolve(__dirname, "..");
 
@@ -141,6 +143,30 @@ export function readClipboard() {
       if (err || !stdout) return resolve("");
       resolve(stdout.trim());
     });
+  });
+}
+
+export function writeClipboard(text) {
+  if (!text) return Promise.resolve(false);
+  const plat = process.platform;
+  return new Promise((resolve) => {
+    let proc;
+    if (plat === "darwin") {
+      proc = exec("pbcopy", (err) => resolve(!err));
+    } else if (plat === "win32") {
+      proc = exec("clip", (err) => resolve(!err));
+    } else {
+      proc = exec(
+        "which wl-copy >/dev/null 2>&1 && wl-copy || xclip -selection clipboard 2>/dev/null || xsel -b -i 2>/dev/null",
+        (err) => resolve(!err),
+      );
+    }
+    if (proc && proc.stdin) {
+      proc.stdin.write(String(text));
+      proc.stdin.end();
+    } else {
+      resolve(false);
+    }
   });
 }
 
@@ -287,11 +313,33 @@ export function getStats() {
   };
 }
 
-// 3. OTA Hot-Patching Engine
+// 3. OTA Hot-Patching Engine (Mori Core + Scrapr Engine)
 const GITHUB_REPO = "coflyn/Mori";
 const OTA_DIR = CONFIG_DIR;
 export const OTA_BUNDLE_PATH = path.join(OTA_DIR, "scrapers-bundle.js");
 export const OTA_META_PATH = path.join(OTA_DIR, "scrapers-meta.json");
+
+export const SCRAPR_DIR = path.join(CONFIG_DIR, "scrapr");
+export const SCRAPR_BUNDLE_PATH = path.join(SCRAPR_DIR, "scrapr-bundle.cjs");
+export const SCRAPR_META_PATH = path.join(SCRAPR_DIR, "version.json");
+export const SCRAPR_VERSION_URL =
+  "https://raw.githubusercontent.com/coflyn/scrapr/main/package.json";
+export const SCRAPR_BUNDLE_URL =
+  "https://raw.githubusercontent.com/coflyn/scrapr/main/bundle.cjs";
+const SCRAPR_FALLBACK_VERSION = "1.3.1";
+
+export function isNewerSemver(latest, current) {
+  if (!latest || !current) return false;
+  const l = String(latest).replace(/^v/, "").split(".").map(Number);
+  const c = String(current).replace(/^v/, "").split(".").map(Number);
+  for (let i = 0; i < 3; i++) {
+    const lPart = l[i] || 0;
+    const cPart = c[i] || 0;
+    if (lPart > cPart) return true;
+    if (lPart < cPart) return false;
+  }
+  return false;
+}
 
 export function resetMori() {
   const filesToDelete = [
@@ -299,6 +347,8 @@ export function resetMori() {
     HISTORY_PATH,
     OTA_BUNDLE_PATH,
     OTA_META_PATH,
+    SCRAPR_BUNDLE_PATH,
+    SCRAPR_META_PATH,
   ];
   for (const f of filesToDelete) {
     if (fs.existsSync(f)) {
@@ -312,40 +362,177 @@ export function resetMori() {
 export const OTA_VERSION_URL = `https://raw.githubusercontent.com/${GITHUB_REPO}/main/public/scrapers-version.json`;
 export const OTA_BUNDLE_URL = `https://raw.githubusercontent.com/${GITHUB_REPO}/main/public/js/scrapers/bundle.js`;
 
-function getBundledVersion() {
-  const localMetaPath = path.join(__dirname, "scrapers-version.json");
-  const rootMetaPath = path.join(ROOT_DIR, "public/scrapers-version.json");
-  const bundledMetaPath = fs.existsSync(localMetaPath)
-    ? localMetaPath
-    : rootMetaPath;
+export function isMoriInstalled() {
+  return fs.existsSync(OTA_BUNDLE_PATH);
+}
 
-  if (fs.existsSync(bundledMetaPath)) {
-    try {
-      const data = JSON.parse(fs.readFileSync(bundledMetaPath, "utf8"));
-      return data.scraperVersion || 1;
-    } catch (_) {}
-  }
-  return 1;
+export function isScraprInstalled() {
+  return fs.existsSync(SCRAPR_BUNDLE_PATH);
 }
 
 export function getActiveScraperVersion() {
   if (fs.existsSync(OTA_META_PATH)) {
     try {
       const meta = JSON.parse(fs.readFileSync(OTA_META_PATH, "utf8"));
-      if (meta.scraperVersion && meta.scraperVersion >= getBundledVersion()) {
-        return meta.scraperVersion;
-      }
+      return meta.scraperVersion || null;
     } catch (_) {}
   }
-  return getBundledVersion();
+  return null;
+}
+
+export function getActiveScraprVersion() {
+  if (fs.existsSync(SCRAPR_META_PATH)) {
+    try {
+      const meta = JSON.parse(fs.readFileSync(SCRAPR_META_PATH, "utf8"));
+      return meta.version || null;
+    } catch (_) {}
+  }
+  return null;
 }
 
 /**
- * Checks for OTA updates from GitHub raw.
- * If force=true, checks immediately and throws on failure.
- * If force=false, checks silently with low timeout (2s).
+ * Downloads and installs Mori Core Engine into ~/.mori/
+ */
+export async function downloadMoriEngine(onProgress) {
+  if (onProgress) onProgress("Fetching Mori version metadata...");
+  const metaRes = await fetch(OTA_VERSION_URL, {
+    signal: AbortSignal.timeout(10000),
+    headers: { "User-Agent": "Mori-CLI", "Cache-Control": "no-cache" },
+  });
+  if (!metaRes.ok) throw new Error(`Failed to fetch Mori version (HTTP ${metaRes.status})`);
+  const meta = await metaRes.json();
+
+  if (onProgress) onProgress("Downloading Mori Engine bundle (~80 KB)...");
+  const bundleRes = await fetch(OTA_BUNDLE_URL, {
+    signal: AbortSignal.timeout(30000),
+    headers: { "User-Agent": "Mori-CLI", "Cache-Control": "no-cache" },
+  });
+  if (!bundleRes.ok) throw new Error(`Failed to download Mori bundle (HTTP ${bundleRes.status})`);
+  const bundleText = await bundleRes.text();
+  if (!bundleText || bundleText.length < 5000) {
+    throw new Error("Invalid Mori bundle payload received.");
+  }
+
+  if (!fs.existsSync(OTA_DIR)) {
+    fs.mkdirSync(OTA_DIR, { recursive: true });
+  }
+
+  fs.writeFileSync(OTA_BUNDLE_PATH, bundleText, "utf8");
+  fs.writeFileSync(
+    OTA_META_PATH,
+    JSON.stringify(
+      {
+        scraperVersion: meta.scraperVersion || "1.0.0",
+        updatedAt: Date.now(),
+        sourceHash: meta.sourceHash || "",
+        changelog: meta.changelog || "",
+      },
+      null,
+      2,
+    ),
+    "utf8",
+  );
+
+  cachedMoriScrapers = null;
+  return { success: true, version: meta.scraperVersion || "1.0.0" };
+}
+
+/**
+ * Downloads and installs Scrapr Engine into ~/.mori/scrapr/
+ */
+export async function downloadScraprEngine(onProgress) {
+  if (onProgress) onProgress("Fetching Scrapr metadata...");
+  let version = SCRAPR_FALLBACK_VERSION;
+  try {
+    const metaRes = await fetch(SCRAPR_VERSION_URL, {
+      signal: AbortSignal.timeout(10000),
+      headers: { "User-Agent": "Mori-CLI", "Cache-Control": "no-cache" },
+    });
+    if (metaRes.ok) {
+      const meta = await metaRes.json();
+      if (meta.version) version = meta.version;
+    }
+  } catch (_) {}
+
+  if (onProgress) onProgress("Downloading Scrapr Engine bundle (~2.7 MB)...");
+  let bundleText = "";
+
+  // 1. Try remote GitHub raw URL
+  try {
+    const bundleRes = await fetch(SCRAPR_BUNDLE_URL, {
+      signal: AbortSignal.timeout(45000),
+      headers: { "User-Agent": "Mori-CLI", "Cache-Control": "no-cache" },
+    });
+    if (bundleRes.ok) {
+      bundleText = await bundleRes.text();
+    }
+  } catch (_) {}
+
+  // 2. Local fallback during development if remote is not yet pushed
+  if (!bundleText || bundleText.length < 50000) {
+    const localDevScrapr = path.resolve(__dirname, "../../../scrapr/bundle.cjs");
+    if (fs.existsSync(localDevScrapr)) {
+      bundleText = fs.readFileSync(localDevScrapr, "utf8");
+    }
+  }
+
+  if (!bundleText || bundleText.length < 50000) {
+    throw new Error(
+      "Failed to download Scrapr bundle. Ensure bundle.cjs is published or pushed to coflyn/scrapr.",
+    );
+  }
+
+  if (!fs.existsSync(SCRAPR_DIR)) {
+    fs.mkdirSync(SCRAPR_DIR, { recursive: true });
+  }
+
+  fs.writeFileSync(SCRAPR_BUNDLE_PATH, bundleText, "utf8");
+  fs.writeFileSync(
+    SCRAPR_META_PATH,
+    JSON.stringify(
+      {
+        version,
+        updatedAt: Date.now(),
+      },
+      null,
+      2,
+    ),
+    "utf8",
+  );
+
+  cachedScrapr = null;
+  return { success: true, version };
+}
+
+export function uninstallMoriEngine() {
+  if (fs.existsSync(OTA_BUNDLE_PATH)) {
+    try { fs.unlinkSync(OTA_BUNDLE_PATH); } catch (_) {}
+  }
+  if (fs.existsSync(OTA_META_PATH)) {
+    try { fs.unlinkSync(OTA_META_PATH); } catch (_) {}
+  }
+  cachedMoriScrapers = null;
+  return true;
+}
+
+export function uninstallScraprEngine() {
+  if (fs.existsSync(SCRAPR_BUNDLE_PATH)) {
+    try { fs.unlinkSync(SCRAPR_BUNDLE_PATH); } catch (_) {}
+  }
+  if (fs.existsSync(SCRAPR_META_PATH)) {
+    try { fs.unlinkSync(SCRAPR_META_PATH); } catch (_) {}
+  }
+  cachedScrapr = null;
+  return true;
+}
+
+/**
+ * Checks for Mori Core OTA updates from GitHub raw.
  */
 export async function checkForOtaUpdate(force = false) {
+  if (!isMoriInstalled()) {
+    return { updated: false, notInstalled: true };
+  }
   try {
     const metaRes = await fetch(OTA_VERSION_URL, {
       signal: AbortSignal.timeout(force ? 8000 : 2500),
@@ -357,7 +544,6 @@ export async function checkForOtaUpdate(force = false) {
     const currentVer = getActiveScraperVersion();
 
     if (remoteMeta.scraperVersion && remoteMeta.scraperVersion > currentVer) {
-      // Pull new bundle
       const bundleRes = await fetch(OTA_BUNDLE_URL, {
         signal: AbortSignal.timeout(15000),
         headers: { "User-Agent": "Mori-CLI-OTA", "Cache-Control": "no-cache" },
@@ -390,6 +576,8 @@ export async function checkForOtaUpdate(force = false) {
         "utf8",
       );
 
+      cachedMoriScrapers = null;
+
       return {
         updated: true,
         oldVersion: currentVer,
@@ -405,53 +593,219 @@ export async function checkForOtaUpdate(force = false) {
   }
 }
 
-// 3. Load Scraper Core (OTA Patch > Bundled Asset, with Safe-Mode Recovery)
-function loadScraperEngine() {
+/**
+ * Checks for Scrapr Engine OTA updates from GitHub raw.
+ */
+export async function checkForScraprOtaUpdate(force = false) {
+  if (!isScraprInstalled()) {
+    return { updated: false, notInstalled: true };
+  }
+  try {
+    const metaRes = await fetch(SCRAPR_VERSION_URL, {
+      signal: AbortSignal.timeout(force ? 8000 : 2500),
+      headers: { "User-Agent": "Mori-CLI-OTA", "Cache-Control": "no-cache" },
+    });
+    if (!metaRes.ok) return { updated: false, reason: "Fetch error" };
+
+    const remoteMeta = await metaRes.json();
+    const currentVer = getActiveScraprVersion();
+
+    if (remoteMeta.version && isNewerSemver(remoteMeta.version, currentVer)) {
+      const bundleRes = await fetch(SCRAPR_BUNDLE_URL, {
+        signal: AbortSignal.timeout(30000),
+        headers: { "User-Agent": "Mori-CLI-OTA", "Cache-Control": "no-cache" },
+      });
+      if (!bundleRes.ok)
+        return { updated: false, reason: "Scrapr bundle download error" };
+
+      const bundleText = await bundleRes.text();
+      if (!bundleText || bundleText.length < 50000) {
+        return { updated: false, reason: "Invalid Scrapr bundle payload" };
+      }
+
+      if (!fs.existsSync(SCRAPR_DIR)) {
+        fs.mkdirSync(SCRAPR_DIR, { recursive: true });
+      }
+
+      fs.writeFileSync(SCRAPR_BUNDLE_PATH, bundleText, "utf8");
+      fs.writeFileSync(
+        SCRAPR_META_PATH,
+        JSON.stringify(
+          {
+            version: remoteMeta.version,
+            updatedAt: Date.now(),
+          },
+          null,
+          2,
+        ),
+        "utf8",
+      );
+
+      cachedScrapr = null;
+
+      return {
+        updated: true,
+        oldVersion: currentVer,
+        newVersion: remoteMeta.version,
+      };
+    }
+
+    return { updated: false, currentVersion: currentVer, latest: true };
+  } catch (err) {
+    if (force) throw err;
+    return { updated: false, error: err.message };
+  }
+}
+
+// 3. Load Scraper Core (Mori Engine)
+let cachedMoriScrapers = null;
+
+export function loadScraperEngine() {
+  if (cachedMoriScrapers) return cachedMoriScrapers;
+
   const localBundlePath = path.join(__dirname, "bundle.js");
   const rootBundlePath = path.join(ROOT_DIR, "public/js/scrapers/bundle.js");
-  const bundledBundlePath = fs.existsSync(localBundlePath)
-    ? localBundlePath
-    : rootBundlePath;
 
-  // Attempt A: Load OTA patch from ~/.mori/scrapers-bundle.js
-  if (fs.existsSync(OTA_BUNDLE_PATH) && fs.existsSync(OTA_META_PATH)) {
+  // Priority 1: ~/.mori/scrapers-bundle.js
+  if (fs.existsSync(OTA_BUNDLE_PATH)) {
     try {
-      const meta = JSON.parse(fs.readFileSync(OTA_META_PATH, "utf8"));
-      if (meta.scraperVersion && meta.scraperVersion >= getBundledVersion()) {
-        const patchCode = fs.readFileSync(OTA_BUNDLE_PATH, "utf8");
-        (0, eval)(patchCode);
-        if (globalThis.__MoriCoreScrapers) {
-          return globalThis.__MoriCoreScrapers;
-        }
+      const patchCode = fs.readFileSync(OTA_BUNDLE_PATH, "utf8");
+      (0, eval)(patchCode);
+      if (globalThis.__MoriCoreScrapers) {
+        cachedMoriScrapers = globalThis.__MoriCoreScrapers;
+        return cachedMoriScrapers;
       }
-    } catch (err) {
-      // Safe-mode recovery: patch corrupted, delete it and fallback
+    } catch (_) {
       try {
         fs.unlinkSync(OTA_BUNDLE_PATH);
-        fs.unlinkSync(OTA_META_PATH);
+        if (fs.existsSync(OTA_META_PATH)) fs.unlinkSync(OTA_META_PATH);
       } catch (_) {}
     }
   }
 
-  // Attempt B: Bundled fallback
-  if (!fs.existsSync(bundledBundlePath)) {
-    throw new Error(
-      `Scraper bundle not found at ${bundledBundlePath}. Run npm run compile:scrapers.`,
-    );
+  // Priority 2: Dev path fallback
+  const devPath = fs.existsSync(localBundlePath)
+    ? localBundlePath
+    : fs.existsSync(rootBundlePath)
+      ? rootBundlePath
+      : null;
+
+  if (devPath) {
+    try {
+      const bundleCode = fs.readFileSync(devPath, "utf8");
+      (0, eval)(bundleCode);
+      if (globalThis.__MoriCoreScrapers) {
+        cachedMoriScrapers = globalThis.__MoriCoreScrapers;
+        return cachedMoriScrapers;
+      }
+    } catch (_) {}
   }
 
-  const bundleCode = fs.readFileSync(bundledBundlePath, "utf8");
-  (0, eval)(bundleCode);
-
-  if (!globalThis.__MoriCoreScrapers) {
-    throw new Error("Failed to initialize __MoriCoreScrapers from bundle.");
-  }
-  return globalThis.__MoriCoreScrapers;
+  throw new Error("Mori Engine not installed. Use /engine to install.");
 }
 
-export const scrapers = loadScraperEngine();
+// 3b. Load Scrapr Engine (Engine 2)
+let cachedScrapr = null;
+
+export function loadScraprEngine() {
+  if (cachedScrapr) return cachedScrapr;
+
+  const localBundlePath = path.join(__dirname, "scrapr-bundle.cjs");
+  const devScraprPath = path.resolve(__dirname, "../../../scrapr/bundle.cjs");
+
+  // Priority 1: ~/.mori/scrapr/scrapr-bundle.cjs
+  if (fs.existsSync(SCRAPR_BUNDLE_PATH)) {
+    try {
+      cachedScrapr = require(SCRAPR_BUNDLE_PATH);
+      if (cachedScrapr && cachedScrapr.resolver) {
+        return cachedScrapr;
+      }
+    } catch (_) {
+      try {
+        fs.unlinkSync(SCRAPR_BUNDLE_PATH);
+        if (fs.existsSync(SCRAPR_META_PATH)) fs.unlinkSync(SCRAPR_META_PATH);
+      } catch (_) {}
+    }
+  }
+
+  // Priority 2: Dev path fallback
+  const fallback = fs.existsSync(localBundlePath)
+    ? localBundlePath
+    : fs.existsSync(devScraprPath)
+      ? devScraprPath
+      : null;
+
+  if (fallback) {
+    try {
+      cachedScrapr = require(fallback);
+      if (cachedScrapr && cachedScrapr.resolver) {
+        return cachedScrapr;
+      }
+    } catch (_) {}
+  }
+
+  throw new Error("Scrapr Engine not installed. Use /engine to install.");
+}
+
+function getScraperFetch() {
+  try {
+    const s = loadScraperEngine();
+    if (s?.scraperFetch) return s.scraperFetch;
+  } catch (_) {}
+  return async function (opts) {
+    const res = await fetch(opts.url, {
+      method: opts.method || (opts.data ? "POST" : "GET"),
+      headers: opts.headers || {},
+      body: typeof opts.data === "object" ? JSON.stringify(opts.data) : opts.data,
+    });
+    const text = await res.text();
+    return opts.rawResponse
+      ? {
+          status: res.status,
+          headers: Object.fromEntries(res.headers.entries()),
+          data: text,
+          url: res.url,
+        }
+      : text;
+  };
+}
 
 // 4. Platform Detection
+export const SCRAPR_ONLY_PLATFORMS = new Set([
+  "soundcloud",
+  "mediafire",
+  "sfile",
+  "pixeldrain",
+  "catbox",
+  "krakenfiles",
+  "gdrive",
+  "doodstream",
+  "safelinku",
+  "sub2unlock",
+  "rekonise",
+  "unshorten",
+]);
+
+export const RESOLVER_LINK_PLATFORMS = new Set([
+  "catbox",
+  "pixeldrain",
+  "safelinku",
+  "sfile",
+  "mediafire",
+  "krakenfiles",
+  "gdrive",
+  "sub2unlock",
+  "rekonise",
+  "unshorten",
+]);
+
+export const SHORTLINK_PLATFORMS = new Set([
+  "safelinku",
+  "sub2unlock",
+  "rekonise",
+  "unshorten",
+]);
+
 export function detectPlatform(rawUrl) {
   if (!rawUrl || typeof rawUrl !== "string") return null;
   const url = rawUrl.toLowerCase();
@@ -467,6 +821,8 @@ export function detectPlatform(rawUrl) {
   )
     return "twitter";
   if (url.includes("spotify.com")) return "spotify";
+  if (url.includes("soundcloud.com") || url.includes("on.soundcloud.com"))
+    return "soundcloud";
   if (url.includes("pinterest.com") || url.includes("pin.it"))
     return "pinterest";
   if (url.includes("music.apple.com")) return "applemusic";
@@ -502,10 +858,58 @@ export function detectPlatform(rawUrl) {
     url.includes("tibibox")
   )
     return "terabox";
+  // File hosts & Resolvers (Engine 2: Scrapr)
+  if (url.includes("mediafire.com")) return "mediafire";
+  if (url.includes("sfile.mobi") || url.includes("sfile.co")) return "sfile";
+  if (url.includes("pixeldrain.com")) return "pixeldrain";
+  if (
+    url.includes("catbox.moe") ||
+    url.includes("litterbox.catbox.moe") ||
+    url.includes("litter.catbox.moe")
+  )
+    return "catbox";
+  if (url.includes("krakenfiles.com")) return "krakenfiles";
+  if (url.includes("drive.google.com") || url.includes("docs.google.com/file"))
+    return "gdrive";
+  if (
+    /(?:doodstream\.com|ds2play\.com|doods\.pro|dood\.(?:to|so|ws|pm|wf|cx|sh|watch))/i.test(
+      url,
+    )
+  )
+    return "doodstream";
+  if (
+    url.includes("safelinku.com") ||
+    url.includes("sfl.gl") ||
+    url.includes("semawur.com") ||
+    url.includes("safelink.id") ||
+    url.includes("sfl.inc") ||
+    url.includes("khaddavi.net")
+  )
+    return "safelinku";
+  if (
+    url.includes("sub2unlock.com") ||
+    url.includes("sub2unlock.net") ||
+    url.includes("sub2unlock.io") ||
+    url.includes("sub2unlock.me") ||
+    url.includes("sub4unlock.com") ||
+    url.includes("sub4unlock.io") ||
+    url.includes("sub4unlock.net")
+  )
+    return "sub2unlock";
+  if (url.includes("rekonise.com")) return "rekonise";
+  if (
+    url.includes("bit.ly") ||
+    url.includes("tinyurl.com") ||
+    url.includes("dub.sh") ||
+    url.includes("cutt.ly") ||
+    url.includes("t.co/") ||
+    url.includes("shorturl.at")
+  )
+    return "unshorten";
   return null;
 }
 
-export const PLATFORM_SERVERS = {
+export const MORI_PLATFORM_SERVERS = {
   tiktok: [
     { id: "auto", name: "Auto (Server 1 → Server 2 fallback)" },
     { id: "server1", name: "Server 1 (TikTokIO)" },
@@ -533,34 +937,98 @@ export const PLATFORM_SERVERS = {
   ],
 };
 
-// 5. Unified Scraper with Automatic Server Fallbacks
-export async function scrapeUrl(url, serverPreference = "auto") {
-  const platform = detectPlatform(url);
-  if (!platform) {
-    throw new Error("URL is not supported by Mori.");
-  }
+export const SCRAPR_PLATFORM_SERVERS = {
+  tiktok: [
+    { id: "auto", name: "Auto (Cascade all 5 servers)" },
+    { id: "tiktokio", name: "TikTokIO (Fast, HD)" },
+    { id: "tikdownloader", name: "TikDownloader (Direct HD)" },
+    { id: "snaptik", name: "SnapTik (Popular, No Watermark)" },
+    { id: "savetik", name: "SaveTik (Alternative)" },
+    { id: "ssstik", name: "SSSTik (Fallback)" },
+  ],
+  instagram: [
+    { id: "auto", name: "Auto (Cascade all 4 servers)" },
+    { id: "indown", name: "InDown (Fast, High Quality)" },
+    { id: "snapsave", name: "SnapSave (Reels/Stories/Posts)" },
+    { id: "snapinsta", name: "SnapInsta (Alternative)" },
+    { id: "direct", name: "Direct (Public Posts)" },
+  ],
+  youtube: [
+    { id: "auto", name: "Auto (ytmp3.gg → ytmp3 fallback)" },
+    { id: "ytmp3gg", name: "ytmp3.gg (Fast, 1080p/720p/MP3)" },
+    { id: "ytmp3", name: "ytmp3 (Alternative)" },
+  ],
+  twitter: [
+    { id: "auto", name: "Auto (Cascade all 4 servers)" },
+    { id: "tvd", name: "TwitterVideoDownloader (HD)" },
+    { id: "savetwt", name: "SaveTWT (Fast)" },
+    { id: "tweeload", name: "TweeLoad (Alternative)" },
+    { id: "direct", name: "Direct FXTwitter" },
+  ],
+  spotify: [
+    { id: "auto", name: "Auto (Cascade all 4 servers)" },
+    { id: "spotidown", name: "SpotiDown (Fast 320kbps)" },
+    { id: "soundloaders", name: "SoundLoaders (Reliable)" },
+    { id: "spotmate", name: "SpotMate" },
+    { id: "spotisaver", name: "SpotiSaver" },
+  ],
+  facebook: [
+    { id: "auto", name: "Auto (SnapSave → FDown fallback)" },
+    { id: "snapsave", name: "SnapSave (HD)" },
+    { id: "fdown", name: "FDown (Alternative)" },
+  ],
+  pinterest: [
+    { id: "auto", name: "Auto (PinDown → Direct fallback)" },
+    { id: "pindown", name: "PinDown" },
+    { id: "direct", name: "Direct" },
+  ],
+  bandcamp: [
+    { id: "auto", name: "Auto (Direct → BandcampDownloader fallback)" },
+    { id: "direct", name: "Direct Stream" },
+    { id: "bandcampdownloader", name: "BandcampDownloader" },
+  ],
+};
 
-  // Normalize server input (e.g. "1" -> "server1", "2" -> "server2")
+export function getPlatformServers(platform, engine = "auto") {
+  if (engine === "scrapr") {
+    return SCRAPR_PLATFORM_SERVERS[platform] || null;
+  }
+  if (engine === "mori") {
+    return MORI_PLATFORM_SERVERS[platform] || null;
+  }
+  return SCRAPR_PLATFORM_SERVERS[platform] || MORI_PLATFORM_SERVERS[platform] || null;
+}
+
+export const PLATFORM_SERVERS = MORI_PLATFORM_SERVERS;
+
+// 5a. Engine 1: Mori Scraper Core
+export async function scrapeWithMori(url, platform, serverPreference = "auto") {
+  const scrapers = loadScraperEngine();
   let srv = serverPreference;
   if (srv === "1") srv = "server1";
   if (srv === "2") srv = "server2";
 
   let res = null;
+  let usedServer = "";
 
   switch (platform) {
     case "tiktok": {
       if (srv === "server2") {
         scrapers.setTikTokSource("tikdownloader");
         res = await scrapers.scrapeTikTok(url);
+        usedServer = "TikDownloader";
       } else if (srv === "server1") {
         scrapers.setTikTokSource("tiktokio");
         res = await scrapers.scrapeTikTok(url);
+        usedServer = "TikTokIO";
       } else {
         scrapers.setTikTokSource("tiktokio");
         res = await scrapers.scrapeTikTok(url);
+        usedServer = "TikTokIO";
         if (!res?.status) {
           scrapers.setTikTokSource("tikdownloader");
           res = await scrapers.scrapeTikTok(url);
+          usedServer = "TikDownloader";
         }
       }
       break;
@@ -569,15 +1037,19 @@ export async function scrapeUrl(url, serverPreference = "auto") {
       if (srv === "server2") {
         scrapers.setInstagramSource("savevid");
         res = await scrapers.scrapeInstagram(url);
+        usedServer = "SaveVid";
       } else if (srv === "server1") {
         scrapers.setInstagramSource("indown");
         res = await scrapers.scrapeInstagram(url);
+        usedServer = "InDown";
       } else {
         scrapers.setInstagramSource("indown");
         res = await scrapers.scrapeInstagram(url);
+        usedServer = "InDown";
         if (!res?.status) {
           scrapers.setInstagramSource("savevid");
           res = await scrapers.scrapeInstagram(url);
+          usedServer = "SaveVid";
         }
       }
       break;
@@ -586,15 +1058,19 @@ export async function scrapeUrl(url, serverPreference = "auto") {
       if (srv === "server2") {
         scrapers.setYouTubeSource("mobi");
         res = await scrapers.scrapeYouTube(url);
+        usedServer = "ytmp3.mobi";
       } else if (srv === "server1") {
         scrapers.setYouTubeSource("gg");
         res = await scrapers.scrapeYouTube(url);
+        usedServer = "ytmp3.gg";
       } else {
         scrapers.setYouTubeSource("gg");
         res = await scrapers.scrapeYouTube(url);
+        usedServer = "ytmp3.gg";
         if (!res?.status) {
           scrapers.setYouTubeSource("mobi");
           res = await scrapers.scrapeYouTube(url);
+          usedServer = "ytmp3.mobi";
         }
       }
       break;
@@ -603,15 +1079,19 @@ export async function scrapeUrl(url, serverPreference = "auto") {
       if (srv === "server2") {
         scrapers.setTwitterSource("savetwt");
         res = await scrapers.scrapeTwitter(url);
+        usedServer = "SaveTWT";
       } else if (srv === "server1") {
         scrapers.setTwitterSource("tvd");
         res = await scrapers.scrapeTwitter(url);
+        usedServer = "TwitterVideoDownloader";
       } else {
         scrapers.setTwitterSource("tvd");
         res = await scrapers.scrapeTwitter(url);
+        usedServer = "TwitterVideoDownloader";
         if (!res?.status) {
           scrapers.setTwitterSource("savetwt");
           res = await scrapers.scrapeTwitter(url);
+          usedServer = "SaveTWT";
         }
       }
       break;
@@ -620,51 +1100,66 @@ export async function scrapeUrl(url, serverPreference = "auto") {
       if (srv === "server2") {
         scrapers.setSpotifySource("soundloaders");
         res = await scrapers.scrapeSpotify(url);
+        usedServer = "SoundLoaders";
       } else if (srv === "server1") {
         scrapers.setSpotifySource("spotidown");
         res = await scrapers.scrapeSpotify(url);
+        usedServer = "SpotiDown";
       } else {
         scrapers.setSpotifySource("spotidown");
         res = await scrapers.scrapeSpotify(url);
+        usedServer = "SpotiDown";
         if (!res?.status) {
           scrapers.setSpotifySource("soundloaders");
           res = await scrapers.scrapeSpotify(url);
+          usedServer = "SoundLoaders";
         }
       }
       break;
     }
     case "pinterest":
       res = await scrapers.scrapePinterest(url);
+      usedServer = "Pinterest";
       break;
     case "applemusic":
       res = await scrapers.scrapeAppleMusic(url);
+      usedServer = "Aplmate";
       break;
     case "facebook":
       res = await scrapers.scrapeFacebook(url);
+      usedServer = "SnapSave";
       break;
     case "rednote":
       res = await scrapers.scrapeRedNote(url);
+      usedServer = "RedNote";
       break;
     case "douyin":
       res = await scrapers.scrapeDouyin(url);
+      usedServer = "Douyin";
       break;
     case "bilibili":
       res = await scrapers.scrapeBilibili(url);
+      usedServer = "Bilibili";
       break;
     case "threads":
       res = await scrapers.scrapeThreads(url);
+      usedServer = "Threads";
       break;
     case "bandcamp":
       res = await scrapers.scrapeBandcamp(url);
+      usedServer = "Bandcamp";
       break;
     case "pixiv":
       res = await scrapers.scrapePixiv(url);
+      usedServer = "Pixiv";
       break;
     case "reddit":
       res = await scrapers.scrapeReddit(url);
+      usedServer = "RapidSave";
       break;
     case "terabox":
       res = await scrapers.scrapeTeraBox(url);
+      usedServer = "TeraBox";
       break;
     default:
       throw new Error(`Platform handler missing for ${platform}`);
@@ -681,16 +1176,406 @@ export async function scrapeUrl(url, serverPreference = "auto") {
 
   return {
     platform,
+    engine: "mori",
+    server: usedServer,
     ...result,
   };
 }
 
+// 5b. Engine 2: Scrapr Stand-alone Scraper & Resolver
+export async function scrapeWithScrapr(
+  url,
+  platform,
+  serverPreference = "auto",
+) {
+  const scrapr = loadScraprEngine();
+  let srv = serverPreference;
+  if (srv === "1") srv = "server1";
+  if (srv === "2") srv = "server2";
+
+  let res = null;
+  let usedServer = "";
+
+  switch (platform) {
+    case "tiktok": {
+      if (srv === "tiktokio" || srv === "server1") {
+        res = await scrapr.tiktok.tiktokio(url);
+        usedServer = "TikTokIO";
+      } else if (srv === "tikdownloader" || srv === "server2") {
+        res = await scrapr.tiktok.tikdownloader(url);
+        usedServer = "TikDownloader";
+      } else if (srv === "snaptik") {
+        res = await scrapr.tiktok.snaptik(url);
+        usedServer = "SnapTik";
+      } else if (srv === "savetik") {
+        res = await scrapr.tiktok.savetik(url);
+        usedServer = "SaveTik";
+      } else if (srv === "ssstik") {
+        res = await scrapr.tiktok.ssstik(url);
+        usedServer = "SSSTik";
+      } else {
+        res = await scrapr.tiktok.tiktokio(url);
+        usedServer = "TikTokIO";
+        if (!res?.status) {
+          res = await scrapr.tiktok.tikdownloader(url);
+          usedServer = "TikDownloader";
+        }
+        if (!res?.status) {
+          res = await scrapr.tiktok.snaptik(url);
+          usedServer = "SnapTik";
+        }
+        if (!res?.status) {
+          res = await scrapr.tiktok.savetik(url);
+          usedServer = "SaveTik";
+        }
+        if (!res?.status) {
+          res = await scrapr.tiktok.ssstik(url);
+          usedServer = "SSSTik";
+        }
+      }
+      break;
+    }
+    case "instagram": {
+      if (srv === "indown" || srv === "server1") {
+        res = await scrapr.instagram.indown(url);
+        usedServer = "InDown";
+      } else if (srv === "snapsave" || srv === "server2") {
+        res = await scrapr.instagram.snapsave(url);
+        usedServer = "SnapSave";
+      } else if (srv === "snapinsta") {
+        res = await scrapr.instagram.snapinsta(url);
+        usedServer = "SnapInsta";
+      } else if (srv === "direct") {
+        res = await scrapr.instagram.direct(url);
+        usedServer = "Direct";
+      } else {
+        res = await scrapr.instagram.indown(url);
+        usedServer = "InDown";
+        if (!res?.status) {
+          res = await scrapr.instagram.snapsave(url);
+          usedServer = "SnapSave";
+        }
+        if (!res?.status) {
+          res = await scrapr.instagram.snapinsta(url);
+          usedServer = "SnapInsta";
+        }
+        if (!res?.status) {
+          res = await scrapr.instagram.direct(url);
+          usedServer = "Direct";
+        }
+      }
+      break;
+    }
+    case "youtube": {
+      if (srv === "ytmp3gg" || srv === "server1") {
+        res = await scrapr.youtube.ytmp3gg(url);
+        usedServer = "ytmp3.gg";
+      } else if (srv === "ytmp3" || srv === "server2") {
+        res = await scrapr.youtube.ytmp3(url);
+        usedServer = "ytmp3";
+      } else {
+        res = await scrapr.youtube.ytmp3gg(url);
+        usedServer = "ytmp3.gg";
+        if (!res?.status) {
+          res = await scrapr.youtube.ytmp3(url);
+          usedServer = "ytmp3";
+        }
+      }
+      break;
+    }
+    case "twitter": {
+      if (srv === "tvd" || srv === "server1") {
+        res = await scrapr.twitter.tvd(url);
+        usedServer = "TwitterVideoDownloader";
+      } else if (srv === "savetwt" || srv === "server2") {
+        res = await scrapr.twitter.savetwt(url);
+        usedServer = "SaveTWT";
+      } else if (srv === "tweeload") {
+        res = await scrapr.twitter.tweeload(url);
+        usedServer = "TweeLoad";
+      } else if (srv === "direct") {
+        res = await scrapr.twitter.direct(url);
+        usedServer = "Direct FXTwitter";
+      } else {
+        res = await scrapr.twitter.tvd(url);
+        usedServer = "TwitterVideoDownloader";
+        if (!res?.status) {
+          res = await scrapr.twitter.savetwt(url);
+          usedServer = "SaveTWT";
+        }
+        if (!res?.status) {
+          res = await scrapr.twitter.tweeload(url);
+          usedServer = "TweeLoad";
+        }
+        if (!res?.status) {
+          res = await scrapr.twitter.direct(url);
+          usedServer = "Direct FXTwitter";
+        }
+      }
+      break;
+    }
+    case "spotify": {
+      if (srv === "spotidown" || srv === "server1") {
+        res = await scrapr.spotify.spotidown(url);
+        usedServer = "SpotiDown";
+      } else if (srv === "soundloaders" || srv === "server2") {
+        res = await scrapr.spotify.soundloaders(url);
+        usedServer = "SoundLoaders";
+      } else if (srv === "spotmate") {
+        res = await scrapr.spotify.spotmate(url);
+        usedServer = "SpotMate";
+      } else if (srv === "spotisaver") {
+        res = await scrapr.spotify.spotisaver(url);
+        usedServer = "SpotiSaver";
+      } else {
+        res = await scrapr.spotify.spotidown(url);
+        usedServer = "SpotiDown";
+        if (!res?.status) {
+          res = await scrapr.spotify.soundloaders(url);
+          usedServer = "SoundLoaders";
+        }
+        if (!res?.status) {
+          res = await scrapr.spotify.spotmate(url);
+          usedServer = "SpotMate";
+        }
+        if (!res?.status) {
+          res = await scrapr.spotify.spotisaver(url);
+          usedServer = "SpotiSaver";
+        }
+      }
+      break;
+    }
+    case "soundcloud":
+      res = await scrapr.soundcloud.klickaud(url);
+      usedServer = "KlickAud";
+      break;
+    case "pinterest": {
+      if (srv === "pindown" || srv === "server1") {
+        res = await scrapr.pinterest.pindown(url);
+        usedServer = "PinDown";
+      } else if (srv === "direct" || srv === "server2") {
+        res = await scrapr.pinterest.direct(url);
+        usedServer = "Direct";
+      } else {
+        res = await scrapr.pinterest.pindown(url);
+        usedServer = "PinDown";
+        if (!res?.status) {
+          res = await scrapr.pinterest.direct(url);
+          usedServer = "Direct";
+        }
+      }
+      break;
+    }
+    case "facebook": {
+      if (srv === "snapsave" || srv === "server1") {
+        res = await scrapr.facebook.snapsave(url);
+        usedServer = "SnapSave";
+      } else if (srv === "fdown" || srv === "server2") {
+        res = await scrapr.facebook.fdown(url);
+        usedServer = "FDown";
+      } else {
+        res = await scrapr.facebook.snapsave(url);
+        usedServer = "SnapSave";
+        if (!res?.status) {
+          res = await scrapr.facebook.fdown(url);
+          usedServer = "FDown";
+        }
+      }
+      break;
+    }
+    case "threads":
+      res = await scrapr.threads.threadster(url);
+      usedServer = "Threadster";
+      break;
+    case "pixiv":
+      res = await scrapr.pixiv.ajax(url);
+      usedServer = "Pixiv";
+      break;
+    case "rednote":
+      res = await scrapr.rednote.direct(url);
+      usedServer = "RedNote";
+      break;
+    case "douyin":
+      res = await scrapr.douyin.direct(url);
+      usedServer = "Douyin";
+      break;
+    case "bilibili":
+      res = await scrapr.bilibili.direct(url);
+      usedServer = "Bilibili";
+      break;
+    case "reddit":
+      res = await scrapr.reddit.rapidsave(url);
+      usedServer = "RapidSave";
+      break;
+    case "terabox":
+      res = await scrapr.terabox.sechno(url);
+      usedServer = "Sechno";
+      break;
+    case "bandcamp": {
+      res = await scrapr.bandcamp.direct(url);
+      usedServer = "Direct";
+      if (!res?.status) {
+        res = await scrapr.bandcamp.bandcampdownloader(url);
+        usedServer = "BandcampDownloader";
+      }
+      break;
+    }
+    case "applemusic":
+      res = await scrapr.applemusic.aplmate(url);
+      break;
+    case "mediafire":
+      res = await scrapr.resolver.mediafire(url);
+      break;
+    case "sfile":
+      res = await scrapr.resolver.sfile(url);
+      break;
+    case "pixeldrain":
+      res = await scrapr.resolver.pixeldrain(url);
+      break;
+    case "catbox":
+      res = await scrapr.resolver.catbox(url);
+      break;
+    case "krakenfiles":
+      res = await scrapr.resolver.krakenfiles(url);
+      break;
+    case "gdrive":
+      res = await scrapr.resolver.gdrive(url);
+      break;
+    case "doodstream":
+      res = await scrapr.resolver.doodstream(url);
+      break;
+    case "safelinku":
+      res = await scrapr.resolver.safelinku(url);
+      break;
+    case "sub2unlock":
+      res = await scrapr.resolver.sub2unlock(url);
+      break;
+    case "rekonise":
+      res = await scrapr.resolver.rekonise(url);
+      break;
+    case "unshorten":
+      res = await scrapr.resolver.unshorten(url);
+      break;
+    default:
+      throw new Error(`Scrapr does not support platform: ${platform}`);
+  }
+
+  if (!res || !res.status) {
+    throw new Error(
+      res?.message || `Failed to scrape media with Scrapr from ${platform}.`,
+    );
+  }
+
+  const result = res.result || {};
+  if (result.title) {
+    result.title = decodeHtmlEntities(result.title);
+  }
+  if (result.author && typeof result.author === "object") {
+    result.author =
+      result.author.name ||
+      result.author.username ||
+      result.author.nickname ||
+      "Creator";
+  }
+
+  let downloads = result.downloads || [];
+  const primaryUrl = result.destinationUrl || result.url;
+  if (!downloads.length && primaryUrl) {
+    downloads = [
+      {
+        type: SHORTLINK_PLATFORMS.has(platform) ? "link" : (result.type || "file"),
+        quality: SHORTLINK_PLATFORMS.has(platform) ? "Resolved Link" : "Direct Download",
+        url: primaryUrl,
+      },
+    ];
+  }
+
+  return {
+    platform,
+    engine: "scrapr",
+    server: usedServer,
+    ...result,
+    downloads,
+  };
+}
+
+// 5c. Unified Scraper with Engine Routing & Automatic Fallback
+export async function scrapeUrl(
+  url,
+  serverPreference = "auto",
+  enginePreference = "auto",
+) {
+  const platform = detectPlatform(url);
+  if (!platform) {
+    throw new Error("URL is not supported by Mori.");
+  }
+
+  const engine = (enginePreference || "auto").toLowerCase();
+  const moriInstalled = isMoriInstalled();
+  const scraprInstalled = isScraprInstalled();
+
+  if (!moriInstalled && !scraprInstalled) {
+    throw new Error(
+      "No scraper engine installed. Run 'mori' or use /engine to install.",
+    );
+  }
+
+  // If platform is exclusive to Scrapr
+  if (SCRAPR_ONLY_PLATFORMS.has(platform)) {
+    if (!scraprInstalled) {
+      throw new Error(
+        `Platform '${platform}' requires Scrapr engine. Install with /engine.`,
+      );
+    }
+    return scrapeWithScrapr(url, platform, serverPreference);
+  }
+
+  // Engine 2 explicit
+  if (engine === "scrapr") {
+    if (!scraprInstalled) {
+      throw new Error("Scrapr engine is not installed. Install with /engine.");
+    }
+    return scrapeWithScrapr(url, platform, serverPreference);
+  }
+
+  // Engine 1 explicit
+  if (engine === "mori") {
+    if (!moriInstalled) {
+      throw new Error("Mori engine is not installed. Install with /engine.");
+    }
+    return scrapeWithMori(url, platform, serverPreference);
+  }
+
+  // Auto mode: single engine fallback
+  if (!moriInstalled && scraprInstalled) {
+    return scrapeWithScrapr(url, platform, serverPreference);
+  }
+  if (moriInstalled && !scraprInstalled) {
+    return scrapeWithMori(url, platform, serverPreference);
+  }
+
+  // Both installed: Engine 1 (Mori) first -> fallback to Engine 2 (Scrapr)
+  try {
+    return await scrapeWithMori(url, platform, serverPreference);
+  } catch (moriErr) {
+    try {
+      const scraprRes = await scrapeWithScrapr(url, platform, serverPreference);
+      scraprRes.fallbackFromMori = true;
+      return scraprRes;
+    } catch (_) {
+      throw moriErr;
+    }
+  }
+}
+
 // 6. Asynchronous Direct URL Resolvers
 export async function resolveUrl(url, onStatus) {
+  const scraperFetch = getScraperFetch();
+
   if (url.startsWith("applemusic_resolve:")) {
     if (onStatus) onStatus("Resolving Apple Music direct stream...");
     const payloadStr = url.replace("applemusic_resolve:", "");
-    const res = await scrapers.scraperFetch({
+    const res = await scraperFetch({
       method: "POST",
       url: "https://aplmate.com/action/track",
       headers: {
@@ -746,7 +1631,7 @@ export async function resolveUrl(url, onStatus) {
     };
     if (cookiesStr) reqHeaders["Cookie"] = cookiesStr;
 
-    const res = await scrapers.scraperFetch({
+    const res = await scraperFetch({
       url: "https://spotidown.app/action/track",
       method: "POST",
       headers: reqHeaders,
@@ -799,19 +1684,19 @@ export async function resolveUrl(url, onStatus) {
       Accept: "*/*",
     };
 
-    const initData = await scrapers.scraperFetch({
+    const initData = await scraperFetch({
       url: `https://a.ymcdn.org/api/v1/init?p=y&23=1llum1n471&_=${Math.random()}`,
       headers: mobiHeaders,
     });
 
     if (initData && !initData.error && initData.convertURL) {
-      let convData = await scrapers.scraperFetch({
+      let convData = await scraperFetch({
         url: `${initData.convertURL}&v=${ytId}&f=${format}&_=${Math.random()}`,
         headers: mobiHeaders,
       });
 
       while (convData && convData.redirect > 0 && convData.redirectURL) {
-        convData = await scrapers.scraperFetch({
+        convData = await scraperFetch({
           url: `${convData.redirectURL}&v=${ytId}&f=${format}&_=${Math.random()}`,
           headers: mobiHeaders,
         });
@@ -825,7 +1710,7 @@ export async function resolveUrl(url, onStatus) {
 
         while (progress < 3 && attempts < 25) {
           await new Promise((r) => setTimeout(r, 1200));
-          const pData = await scrapers.scraperFetch({
+          const pData = await scraperFetch({
             url: `${progUrl}&_=${Math.random()}`,
             headers: mobiHeaders,
           });
