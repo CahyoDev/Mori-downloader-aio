@@ -1,17 +1,16 @@
 {
   "name": "@coflyn/mori",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "Universal media downloader CLI. Save anything, from anywhere. No watermarks. No tracking.",
   "type": "module",
   "bin": {
     "mori": "index.js"
   },
   "main": "index.js",
+  "scripts": {},
   "files": [
     "index.js",
     "engine.js",
-    "bundle.js",
-    "scrapers-version.json",
     "README.md",
     "CHANGELOG.md",
     "LICENSE"

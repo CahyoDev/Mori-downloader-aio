@@ -5,6 +5,19 @@ All notable changes to the Mori CLI (`@coflyn/mori`) will be documented in this 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-10-21
+
+### Added
+- **First-Run Engine Setup Wizard**: Interactive prompt on fresh install (`mori`) to choose scraper engine setup: Both (Mori Core + Scrapr), Scrapr Engine only, or Mori Engine only.
+- **On-Demand Engine Architecture**: Downloads engines directly into `~/.mori/` via OTA hot-patching, keeping the Mori CLI npm package lightweight (~30 KB).
+- **Interactive Engine Management (`/engine`)**: Easily install missing engines, re-download bundles, or uninstall engines directly from the CLI.
+- **Enhanced Stream Resolution Labels**: Standardized stream formatting with explicit resolutions (`1080p Video`, `720p Video`, `MP3 Audio`).
+- **Dynamic Startup Banner**: Displays real-time engine installation and version badges (`mori v...`, `scrapr v...`, or `no engine installed`).
+
+### Changed
+- **Zero-Engine Bundle Package**: Deleted static bundle artifacts (`bundle.js`, `scrapr-bundle.cjs`, `scrapers-version.json`) from the CLI repository, eliminating coupling with external scraper updates.
+- **Scoped Background OTA Updates**: Background patch checks only run for installed engines.
+
 ## [1.0.1] - 2026-10-18
 
 ### Added
