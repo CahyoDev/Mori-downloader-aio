@@ -61,15 +61,81 @@ function cleanUrl(u) {
   return u ? u.split("?")[0] : "";
 }
 
+const SAFARI_MOBILE_UA = CHROME_MOBILE_UA;
+
+function decodeSnapSave(data) {
+  try {
+    const regex =
+      /eval\(function\(h,u,n,t,e,r\)\{.*?\}\("(.*?)",(\d+),"(.*?)",(\d+),(\d+),(\d+)\)\)/;
+    const match = data.match(regex);
+    if (match) {
+      const h = match[1],
+        u = parseInt(match[2]),
+        n = match[3],
+        t = parseInt(match[4]),
+        e = parseInt(match[5]);
+      const delimiter = n[e],
+        parts = h.split(delimiter);
+      let decoded = "";
+      for (let s of parts) {
+        if (s === "") continue;
+        let val = 0;
+        for (let j = 0; j < s.length; j++)
+          val += n.indexOf(s[j]) * Math.pow(e, s.length - 1 - j);
+        decoded += String.fromCharCode(val - t);
+      }
+      try {
+        return decodeURIComponent(escape(decoded));
+      } catch {
+        return Buffer.from(decoded, "binary").toString("utf-8");
+      }
+    }
+    return data;
+  } catch (err) {
+    return data;
+  }
+}
+
+function extractFinalUrl(input) {
+  if (!input) return null;
+  let raw = input.trim().replace(/^["'\\]+|["'\\]+$/g, ""),
+    isRender = false;
+  if (raw.includes("get_progressApi") || raw.includes("get_progress")) {
+    isRender = true;
+    const tokenMatch = raw.match(/token=([^&'"]+)/);
+    if (tokenMatch) raw = tokenMatch[1];
+  }
+  if (raw.includes(".") && !raw.startsWith("http")) {
+    try {
+      const payloadPart = raw.split(".")[1];
+      if (payloadPart) {
+        const payload = JSON.parse(
+          Buffer.from(payloadPart, "base64").toString("utf-8")
+        );
+        if (payload.video_url)
+          return { url: payload.video_url, isRender: true };
+        if (payload.url) return { url: payload.url, isRender: false };
+      }
+    } catch (e) {}
+  }
+  if (raw.startsWith("//")) return { url: "https:" + raw, isRender };
+  if (raw.startsWith("/"))
+    return { url: "https://snapsave.app" + raw, isRender };
+  return { url: raw, isRender };
+}
+
 globalThis.window.__moriDeps = {
   utils: {
     CHROME_UA,
     CHROME_DESKTOP_UA,
     CHROME_MOBILE_UA,
+    SAFARI_MOBILE_UA,
     getUserAgent,
     cleanUrl,
     getCookiesFromHeaders,
     serializeData,
+    decodeSnapSave,
+    extractFinalUrl,
   },
   urlUtils: {
     getCleanUrl: (u) => (u ? u.trim() : ""),
@@ -250,32 +316,49 @@ export function clearHistory() {
   }
 }
 
-export function deleteHistoryItem(index, deleteFile = true) {
+export function deleteHistoryItems(indices, deleteFile = true) {
   try {
     const list = getHistory(200);
-    if (index < 0 || index >= list.length) {
-      return { success: false, error: "Index out of range" };
-    }
-    const [removed] = list.splice(index, 1);
-    let fileDeleted = false;
+    const sortedIndices = [...new Set(indices)].sort((a, b) => b - a);
+    const deletedItems = [];
+    let filesDeletedCount = 0;
 
-    if (deleteFile && removed.path && fs.existsSync(removed.path)) {
-      try {
-        fs.unlinkSync(removed.path);
-        fileDeleted = true;
-      } catch (_) {}
+    for (const idx of sortedIndices) {
+      if (idx >= 0 && idx < list.length) {
+        const [removed] = list.splice(idx, 1);
+        let fileDeleted = false;
+        if (deleteFile && removed.path && fs.existsSync(removed.path)) {
+          try {
+            fs.unlinkSync(removed.path);
+            fileDeleted = true;
+            filesDeletedCount++;
+          } catch (_) {}
+        }
+        deletedItems.push({ item: removed, fileDeleted });
+      }
     }
 
     fs.writeFileSync(HISTORY_PATH, JSON.stringify(list, null, 2), "utf8");
 
     return {
       success: true,
-      item: removed,
-      fileDeleted,
+      count: deletedItems.length,
+      filesDeletedCount,
+      deletedItems,
     };
   } catch (err) {
     return { success: false, error: err.message };
   }
+}
+
+export function deleteHistoryItem(index, deleteFile = true) {
+  const res = deleteHistoryItems([index], deleteFile);
+  if (!res.success) return res;
+  return {
+    success: true,
+    item: res.deletedItems[0]?.item,
+    fileDeleted: res.deletedItems[0]?.fileDeleted || false,
+  };
 }
 
 export function getStats() {
@@ -524,6 +607,160 @@ export function uninstallScraprEngine() {
   }
   cachedScrapr = null;
   return true;
+}
+
+export async function fetchMoriEngineHistory() {
+  try {
+    const res = await fetch(
+      `https://api.github.com/repos/${GITHUB_REPO}/commits?path=public/js/scrapers/bundle.js&per_page=15`,
+      {
+        signal: AbortSignal.timeout(10000),
+        headers: { "User-Agent": "Mori-CLI" },
+      },
+    );
+    if (!res.ok) return [];
+    const commits = await res.json();
+    if (!Array.isArray(commits)) return [];
+    return commits.map((c) => ({
+      sha: c.sha.slice(0, 7),
+      fullSha: c.sha,
+      message: (c.commit?.message || "").split("\n")[0].trim(),
+      date: c.commit?.author?.date || "",
+    }));
+  } catch (_) {
+    return [];
+  }
+}
+
+export async function downloadMoriEngineByCommit(commitSha, onProgress) {
+  const shortSha = commitSha.slice(0, 7);
+  if (onProgress) onProgress(`Fetching Mori Core bundle at commit ${shortSha}...`);
+
+  const bundleUrl = `https://raw.githubusercontent.com/${GITHUB_REPO}/${commitSha}/public/js/scrapers/bundle.js`;
+  const metaUrl = `https://raw.githubusercontent.com/${GITHUB_REPO}/${commitSha}/public/scrapers-version.json`;
+
+  const [bundleRes, metaRes] = await Promise.all([
+    fetch(bundleUrl, {
+      signal: AbortSignal.timeout(30000),
+      headers: { "User-Agent": "Mori-CLI", "Cache-Control": "no-cache" },
+    }),
+    fetch(metaUrl, {
+      signal: AbortSignal.timeout(15000),
+      headers: { "User-Agent": "Mori-CLI", "Cache-Control": "no-cache" },
+    }).catch(() => null),
+  ]);
+
+  if (!bundleRes.ok) {
+    throw new Error(`Failed to fetch bundle at commit ${shortSha}: HTTP ${bundleRes.status}`);
+  }
+
+  const bundleText = await bundleRes.text();
+  if (!bundleText || bundleText.length < 5000) {
+    throw new Error("Downloaded bundle is empty or invalid.");
+  }
+
+  let meta = { scraperVersion: shortSha };
+  if (metaRes && metaRes.ok) {
+    try {
+      meta = await metaRes.json();
+    } catch (_) {}
+  }
+
+  if (!fs.existsSync(OTA_DIR)) {
+    fs.mkdirSync(OTA_DIR, { recursive: true });
+  }
+
+  fs.writeFileSync(OTA_BUNDLE_PATH, bundleText, "utf8");
+  fs.writeFileSync(
+    OTA_META_PATH,
+    JSON.stringify(
+      {
+        scraperVersion: meta.scraperVersion || shortSha,
+        updatedAt: Date.now(),
+        sourceHash: meta.sourceHash || "",
+        changelog: meta.changelog || "",
+        commitSha: shortSha,
+      },
+      null,
+      2,
+    ),
+    "utf8",
+  );
+
+  cachedMoriScrapers = null;
+  return { success: true, version: meta.scraperVersion || shortSha };
+}
+
+export async function fetchScraprEngineVersions() {
+  try {
+    const res = await fetch("https://registry.npmjs.org/@coflyn/scrapr", {
+      signal: AbortSignal.timeout(10000),
+      headers: { "User-Agent": "Mori-CLI" },
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    const versions = Object.keys(data.versions || {});
+    return versions.reverse();
+  } catch (_) {
+    return [];
+  }
+}
+
+export async function downloadScraprEngineVersion(targetVersion, onProgress) {
+  if (onProgress) onProgress(`Downloading Scrapr Engine v${targetVersion}...`);
+  let bundleText = "";
+
+  const urls = [
+    `https://unpkg.com/@coflyn/scrapr@${targetVersion}/bundle.cjs`,
+    `https://cdn.jsdelivr.net/npm/@coflyn/scrapr@${targetVersion}/bundle.cjs`,
+    `https://raw.githubusercontent.com/coflyn/scrapr/v${targetVersion}/bundle.cjs`,
+    `https://raw.githubusercontent.com/coflyn/scrapr/main/bundle.cjs`,
+  ];
+
+  for (const u of urls) {
+    try {
+      const res = await fetch(u, {
+        signal: AbortSignal.timeout(30000),
+        headers: { "User-Agent": "Mori-CLI", "Cache-Control": "no-cache" },
+      });
+      if (res.ok) {
+        bundleText = await res.text();
+        if (bundleText && bundleText.length > 50000) break;
+      }
+    } catch (_) {}
+  }
+
+  if (!bundleText || bundleText.length < 50000) {
+    const localDevScrapr = path.resolve(__dirname, "../../../scrapr/bundle.cjs");
+    if (fs.existsSync(localDevScrapr)) {
+      bundleText = fs.readFileSync(localDevScrapr, "utf8");
+    }
+  }
+
+  if (!bundleText || bundleText.length < 50000) {
+    throw new Error(`Failed to download Scrapr v${targetVersion} bundle.`);
+  }
+
+  if (!fs.existsSync(SCRAPR_DIR)) {
+    fs.mkdirSync(SCRAPR_DIR, { recursive: true });
+  }
+
+  fs.writeFileSync(SCRAPR_BUNDLE_PATH, bundleText, "utf8");
+  fs.writeFileSync(
+    SCRAPR_META_PATH,
+    JSON.stringify(
+      {
+        version: targetVersion,
+        updatedAt: Date.now(),
+      },
+      null,
+      2,
+    ),
+    "utf8",
+  );
+
+  cachedScrapr = null;
+  return { success: true, version: targetVersion };
 }
 
 /**
@@ -784,6 +1021,21 @@ export const SCRAPR_ONLY_PLATFORMS = new Set([
   "sub2unlock",
   "rekonise",
   "unshorten",
+  // Comic & Manga (Engine 2)
+  "kiryuu",
+  "komikcast",
+  "mangadex",
+  "komikindo",
+  "komiku",
+  "bacakomik",
+  "manhwaindo",
+  "asurascans",
+  "mangabats",
+  // Anime (Engine 2)
+  "otakudesu",
+  "nimegami",
+  "gogoanime",
+  "animetosho",
 ]);
 
 export const RESOLVER_LINK_PLATFORMS = new Set([
@@ -903,9 +1155,64 @@ export function detectPlatform(rawUrl) {
     url.includes("dub.sh") ||
     url.includes("cutt.ly") ||
     url.includes("t.co/") ||
-    url.includes("shorturl.at")
+    url.includes("shorturl.at") ||
+    url.includes("aka.ms")
   )
     return "unshorten";
+  // Comic & Manga (Engine 2: Scrapr)
+  if (url.includes("kiryuu.to") || url.includes("kiryuu.id")) return "kiryuu";
+  if (
+    url.includes("komikcast.info") ||
+    url.includes("komikcast.ch") ||
+    url.includes("komikcast.me") ||
+    url.includes("komikcast.cz")
+  )
+    return "komikcast";
+  if (url.includes("mangadex.org")) return "mangadex";
+  if (
+    url.includes("komikindo.ch") ||
+    url.includes("komikindo.org") ||
+    url.includes("komikindo.tv")
+  )
+    return "komikindo";
+  if (url.includes("komiku.org") || url.includes("komiku.id")) return "komiku";
+  if (
+    url.includes("bacakomik.my") ||
+    url.includes("bacakomik.co") ||
+    url.includes("bacakomik.one")
+  )
+    return "bacakomik";
+  if (
+    url.includes("manhwaindo.my") ||
+    url.includes("manhwaindo.id") ||
+    url.includes("manhwaindo.org")
+  )
+    return "manhwaindo";
+  if (
+    url.includes("asurascans.com") ||
+    url.includes("asuracomic.net") ||
+    url.includes("asura.gg")
+  )
+    return "asurascans";
+  if (url.includes("mangabats.com") || url.includes("mangabat.com"))
+    return "mangabats";
+
+  // Anime (Engine 2: Scrapr)
+  if (
+    url.includes("otakudesu.blog") ||
+    url.includes("otakudesu.cloud") ||
+    url.includes("otakudesu.tube") ||
+    url.includes("otakudesu.info")
+  )
+    return "otakudesu";
+  if (url.includes("nimegami.id")) return "nimegami";
+  if (
+    url.includes("gogoanime") ||
+    url.includes("gogoanimes") ||
+    url.includes("anitaku")
+  )
+    return "gogoanime";
+  if (url.includes("animetosho.org")) return "animetosho";
   return null;
 }
 
@@ -1456,6 +1763,60 @@ export async function scrapeWithScrapr(
     case "unshorten":
       res = await scrapr.resolver.unshorten(url);
       break;
+    // Comic & Manga
+    case "kiryuu":
+      res = await scrapr.comic.kiryuu(url);
+      usedServer = "Kiryuu";
+      break;
+    case "komikcast":
+      res = await scrapr.comic.komikcast(url);
+      usedServer = "Komikcast";
+      break;
+    case "mangadex":
+      res = await scrapr.comic.mangadex(url);
+      usedServer = "MangaDex";
+      break;
+    case "komikindo":
+      res = await scrapr.comic.komikindo(url);
+      usedServer = "Komikindo";
+      break;
+    case "komiku":
+      res = await scrapr.comic.komiku(url);
+      usedServer = "Komiku";
+      break;
+    case "bacakomik":
+      res = await scrapr.comic.bacakomik(url);
+      usedServer = "Bacakomik";
+      break;
+    case "manhwaindo":
+      res = await scrapr.comic.manhwaindo(url);
+      usedServer = "ManhwaIndo";
+      break;
+    case "asurascans":
+      res = await scrapr.comic.asurascans(url);
+      usedServer = "AsuraScans";
+      break;
+    case "mangabats":
+      res = await scrapr.comic.mangabats(url);
+      usedServer = "MangaBats";
+      break;
+    // Anime
+    case "otakudesu":
+      res = await scrapr.anime.otakudesu(url);
+      usedServer = "Otakudesu";
+      break;
+    case "nimegami":
+      res = await scrapr.anime.nimegami(url);
+      usedServer = "Nimegami";
+      break;
+    case "gogoanime":
+      res = await scrapr.anime.gogoanime(url);
+      usedServer = "Gogoanime";
+      break;
+    case "animetosho":
+      res = await scrapr.anime.animetosho(url);
+      usedServer = "AnimeTosho";
+      break;
     default:
       throw new Error(`Scrapr does not support platform: ${platform}`);
   }
@@ -1749,16 +2110,33 @@ export function sanitizeFilename(title, ext = "mp4") {
 }
 
 // 8. Stream Downloader with Progress Reporting
-export async function downloadMediaFile(downloadUrl, outputPath, onProgress) {
+export async function downloadMediaFile(
+  downloadUrl,
+  outputPath,
+  onProgress,
+  extraHeaders = {},
+) {
   const res = await fetch(downloadUrl, {
     headers: {
       "User-Agent": CHROME_UA,
       Accept: "*/*",
+      ...extraHeaders,
     },
   });
 
   if (!res.ok) {
     throw new Error(`Download HTTP error: ${res.status} ${res.statusText}`);
+  }
+
+  const contentType = (res.headers.get("content-type") || "").toLowerCase();
+  if (
+    contentType.includes("text/html") &&
+    !outputPath.endsWith(".html") &&
+    !outputPath.endsWith(".txt")
+  ) {
+    throw new Error(
+      "Received HTML webpage instead of a direct media stream. Please select a Direct MP4 stream.",
+    );
   }
 
   const totalBytes = parseInt(res.headers.get("content-length") || "0", 10);
