@@ -12,7 +12,7 @@
   <img src="https://img.shields.io/github/stars/coflyn/Mori?style=flat-square&color=gold" alt="Stars">
   <img src="https://img.shields.io/github/repo-size/coflyn/Mori?style=flat-square&color=purple" alt="Repo Size">
   <img src="https://img.shields.io/badge/License-GPL--3.0-blue?style=flat-square" alt="License">
-  <img src="https://img.shields.io/badge/Platform-Android%20%7C%20iOS%20%7C%20macOS%20%7C%20Windows%20%7C%20CLI-3DDC84?style=flat-square&logo=android&logoColor=white" alt="Platform">
+  <img src="https://img.shields.io/badge/Platform-Android%20%7C%20iOS%20%7C%20CLI-3DDC84?style=flat-square&logo=android&logoColor=white" alt="Platform">
 </p>
 
 <div align="center">
@@ -70,13 +70,21 @@ Pre-compiled, ready-to-use packages are available for all devices on **[GitHub R
 | Platform                                                                                                                        | Available Packages                                                | Installation Guide                                                                  |
 | :------------------------------------------------------------------------------------------------------------------------------ | :---------------------------------------------------------------- | :---------------------------------------------------------------------------------- |
 | <img src="https://cdn.simpleicons.org/android/3DDC84" width="16" /> **Android**                                                 | `Mori v...apk`                                                    | [Installation & Play Protect Guide](GUIDE.md#android-installation--troubleshooting) |
-| <img src="https://cdn.simpleicons.org/apple/000000" width="16" /> **macOS**                                                     | `Mori-v...-macOS-arm64.dmg`<br>`Mori-v...-macOS-arm64.app.tar.gz` | [Gatekeeper Quarantine Fix](GUIDE.md#macos-installation--gatekeeper-fix)            |
-| <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/windows11/windows11-original.svg" width="16" /> **Windows** | `Mori-v...-Windows-x64-Setup.exe`<br>`Mori-v...-Windows-x64.msi`  | [Windows Setup Guide](GUIDE.md#windows-installation)                                |
 | <img src="https://cdn.simpleicons.org/apple/000000" width="16" /> **iOS**                                                       | `Mori v...ipa`                                                    | [AltStore / TrollStore Sideloading](GUIDE.md#ios-sideloading-guide)                 |
-| <img src="https://cdn.simpleicons.org/npm/CB3837" width="16" /> **CLI (Terminal)**                                             | `npx @coflyn/mori`<br>`npm install -g @coflyn/mori`               | [Mori CLI Guide](#-mori-cli-terminal)                                               |
+| <img src="https://cdn.simpleicons.org/npm/CB3837" width="16" /> **CLI (Desktop & Server)**                                       | `npx @coflyn/mori`<br>`npm install -g @coflyn/mori`               | [Mori CLI Guide](#-mori-cli-terminal)                                               |
 
 > 📖 **Need help installing or troubleshooting?**  
 > Read the complete **[Installation, Sideloading & User Guide (GUIDE.md)](GUIDE.md)**.
+
+> 💡 **Why Desktop GUI Deleted?**  
+> Desktop GUI builds (`.dmg`, `.exe`, `.msi`) previously built with Tauri have been retired and consolidated into the standalone **Mori CLI** (`@coflyn/mori`).  
+>
+> - **Direct Execution via NPX**: Rather than downloading standalone installers and manually updating them, desktop users across macOS, Windows, and Linux can run Mori immediately on demand through `npx @coflyn/mori` or install it globally via `npm install -g @coflyn/mori`.
+> - **No Gatekeeper & SmartScreen Blocks**: Uncertified desktop binaries frequently trigger false-positive security warnings on desktop operating systems—such as macOS Gatekeeper's *"Mori is damaged and can't be opened"* quarantine and Windows SmartScreen alerts. Shifting to an npm-distributed CLI completely bypasses these operating system hurdles without requiring users to run manual terminal bypass commands (`xattr -cr`).
+> - **Focus on Mobile & Scraper Reliability**: Supporting four operating systems at once created unnecessary friction. Maintaining separate Rust toolchains and chasing desktop-specific GUI bugs took valuable time away from the core project. Retiring the desktop GUI allows development to focus entirely on polishing the mobile experience (Android & iOS) and keeping all 16 scraper engines fast and reliable.
+> - **Full Feature Parity**: The CLI is not a reduced version. It retains full access to all 16 supported platforms, dual-engine scrapers, interactive REPL navigation, audio extraction, PDF compilation, and concurrent parallel downloads.
+
+---
 
 ## 💻 Mori CLI (Terminal)
 
@@ -161,7 +169,7 @@ Key CLI capabilities:
 
 Interested in customizing the interface, contributing translations, or compiling binaries locally?
 
-👉 **[Contributing & Build Guide (CONTRIBUTING.md)](CONTRIBUTING.md)** — Complete prerequisites, environment setup, and compilation instructions for Android, iOS, macOS, and Windows.  
+👉 **[Contributing & Build Guide (CONTRIBUTING.md)](CONTRIBUTING.md)** — Complete prerequisites, environment setup, and compilation instructions for Android and iOS.  
 📜 **[Release History & Changelog (CHANGELOG.md)](CHANGELOG.md)** — Detailed version-by-version release logs.
 
 <details>
@@ -171,7 +179,6 @@ Interested in customizing the interface, contributing translations, or compiling
 
 - **JavaScript (ES6+)**: Core application logic and client-side UI.
 - **HTML5 & CSS3**: Custom responsive design system with dark mode and smooth animations.
-- **Tauri v2 (Rust)**: Ultra-lightweight desktop engine for macOS & Windows (`.dmg`, `.app`, `.msi`, `.exe`).
 - **CapacitorJS**: Native Android and iOS bridge for filesystem, share sheet, clipboard, and biometrics.
 - **OkHttp (Native Android)**: High-performance native HTTP engine to seamlessly bypass WebView CORS and network restrictions.
 - **Cheerio & Axios**: Fast DOM HTML parsing and HTTP client request handling.
@@ -191,10 +198,7 @@ Mori/
 │   └── gradle/                 # Gradle build scripts & configurations
 ├── ios/                        # Capacitor iOS Xcode workspace
 │   └── App/                    # iOS Xcode project, Info.plist, and CocoaPods
-├── src-tauri/                  # Tauri v2 Desktop Rust backend (macOS & Windows)
-│   ├── capabilities/           # Application permissions & security capabilities
-│   ├── src/                    # Rust native HTTP, recursive directory scanner, & file deletion
-│   └── tauri.conf.json         # Desktop app configuration & window bounds
+├── cli/                        # Standalone Universal Media Downloader CLI (Node.js)
 ├── src-scrapers/               # Modular ES scraper engine source files (16 platforms)
 ├── scripts/                    # Build & compilation tooling
 │   └── compile-scrapers.mjs    # esbuild compilation script for scrapers bundle & checksum manifest
@@ -250,7 +254,7 @@ Mori/
 │   │   │   └── updateScrapers.js # OTA scraper hot-patch downloader & validator
 │   │   ├── scrapers/           # Scraper runtime loader & HTTP helper
 │   │   │   ├── bundle.js       # Bundled scraper core (esbuild IIFE, all 16 platforms)
-│   │   │   ├── httpHelper.js   # Unified HTTP engine (native OkHttp/Tauri bridge + UA rotation)
+│   │   │   ├── httpHelper.js   # Unified HTTP engine (native OkHttp/Capacitor bridge + UA rotation)
 │   │   │   └── index.js        # Runtime loader with OTA hot-patch support
 │   │   ├── ui/                 # UI rendering & presentation layer
 │   │   │   ├── downloadBubble.js # Persistent floating download bubble & dropup task manager

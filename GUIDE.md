@@ -1,19 +1,18 @@
 # Mori Installation & User Guide
 
-This guide covers everything you need to know about installing, sideloading, troubleshooting, and getting the most out of Mori on Android, macOS, Windows, and iOS.
+This guide covers everything you need to know about installing, sideloading, troubleshooting, and getting the most out of Mori on Android, iOS, and Desktop (CLI).
 
 ---
 
-## 📥 Download Official Binaries
+## 📥 Download Official Releases
 
-Always download official Mori release binaries directly from the **[GitHub Releases](https://github.com/coflyn/Mori/releases)** page.
+Always download official Mori release binaries directly from the **[GitHub Releases](https://github.com/coflyn/Mori/releases)** page or install via **npm**.
 
 | Platform | Recommended Asset | Installation Method |
 | :--- | :--- | :--- |
 | **Android** | `Mori v{VERSION}.apk` | Direct Sideload / Install |
-| **macOS** | `Mori-{VERSION}-macOS-arm64.dmg` | Drag to `/Applications` |
-| **Windows** | `Mori-{VERSION}-Windows-x64-Setup.exe` | Standard Windows Installer |
 | **iOS** | `Mori v{VERSION}.ipa` | Sideload (AltStore / TrollStore / Scarlet) |
+| **CLI (Desktop & Server)** | `@coflyn/mori` | `npx @coflyn/mori` / `npm i -g @coflyn/mori` |
 
 ---
 
@@ -32,33 +31,20 @@ Because Mori is an open-source application distributed outside the Google Play S
 
 ---
 
-## 🍏 macOS Installation & Gatekeeper Fix
+## 💻 Desktop (macOS, Windows, Linux) via CLI
 
-### Standard Installation
-* **Option A (DMG Installer - Recommended):** Download `Mori-{VERSION}-macOS-arm64.dmg`, double-click to open, and drag **Mori** into your **Applications** folder.
-* **Option B (Tarball Archive):** Download `Mori-{VERSION}-macOS-arm64.app.tar.gz`, extract it, and move `Mori.app` into your **Applications** folder.
+Desktop users can run Mori directly using the universal CLI without manual setup or native installers:
 
-### "Mori is damaged and can't be opened" (Gatekeeper Quarantine)
-When downloading `.app` or `.dmg` bundles via web browsers (Safari, Brave, Chrome), macOS automatically tags unnotarized binaries with the `com.apple.quarantine` attribute.
+```bash
+# Run directly without installation
+npx @coflyn/mori
 
-**Solution (Choose one):**
-* **Method 1 (Quick Terminal Command - Recommended):**
-  Open Terminal and run:
-  ```bash
-  sudo xattr -cr /Applications/Mori.app
-  ```
-* **Method 2 (Finder):**
-  Right-Click (or Control + Click) `Mori.app` in Finder → Select **Open** → Click **Open** on the confirmation dialog.
+# Or install globally
+npm install -g @coflyn/mori
+mori
+```
 
----
-
-## 🪟 Windows Installation
-
-1. Download `Mori-{VERSION}-Windows-x64-Setup.exe` (Standard Setup) or `Mori-{VERSION}-Windows-x64.msi` (Windows Installer Package).
-2. Run the installer and follow the setup wizard.
-3. If Windows SmartScreen displays *"Windows protected your PC"*:
-   - Click **"More info"**
-   - Click **"Run anyway"**
+Refer to the main [CLI Documentation](cli/README.md) for full commands, flags, and options.
 
 ---
 

@@ -53,7 +53,6 @@ Feel free to refine the CSS design system, optimize MoriPlayer controls, enhance
 
 #### Platform-Specific Requirements:
 * **Android**: Android Studio, Android SDK (API 34+), NDK (`28.2+`), Java 17.
-* **Desktop (macOS & Windows)**: Rust toolchain (`rustup`, `cargo`), Tauri CLI.
 * **iOS**: macOS with Xcode 15+ and CocoaPods (`gem install cocoapods`).
 
 ---
@@ -128,28 +127,6 @@ android {
     }
 }
 ```
-
----
-
-### 🖥️ Building for Desktop (macOS & Windows)
-
-Mori Desktop is powered by **Tauri v2 (Rust)** for minimal resource usage and instant startup times.
-
-#### Development Mode
-
-```bash
-npm run tauri:dev
-```
-
-#### Building Release Installers
-
-```bash
-npm run tauri:build
-```
-
-**Output artifacts:**
-* **macOS**: `src-tauri/target/release/bundle/macos/Mori.app` & `.dmg` / `.tar.gz`
-* **Windows**: `src-tauri/target/release/bundle/msi/*.msi` & `.exe` setup bundle
 
 ---
 
