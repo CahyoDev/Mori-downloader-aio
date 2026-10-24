@@ -35,6 +35,7 @@ import {
   addToHistory,
   clearHistory,
   deleteHistoryItem,
+  deleteHistoryItems,
   readClipboard,
   getNonCollidingPath,
   resetMori,
@@ -45,9 +46,14 @@ import {
   pingNetwork,
   compileImagesToPdf,
   CHROME_UA,
+  loadScraprEngine,
+  fetchMoriEngineHistory,
+  downloadMoriEngineByCommit,
+  fetchScraprEngineVersions,
+  downloadScraprEngineVersion,
 } from "./engine.js";
 
-const APP_VERSION = "1.1.0";
+const APP_VERSION = "1.2.0";
 
 function isNewerVersion(latest, current) {
   if (!latest || !current) return false;
@@ -410,17 +416,28 @@ async function processDownloadItem({ item, meta, outputDir, index, total }) {
 
   let finalBytes = 0;
   try {
-    await downloadMediaFile(directUrl, destPath, (prog) => {
-      finalBytes = prog.downloadedBytes;
-      const bar = renderProgressBar(prog.percent, 20);
-      const pct = `${prog.percent.toFixed(0)}%`.padStart(4);
-      const dl = formatBytes(prog.downloadedBytes);
-      const tot = prog.totalBytes > 0 ? formatBytes(prog.totalBytes) : "?";
-      const spd = `${formatBytes(prog.speedBps)}/s`;
+    await downloadMediaFile(
+      directUrl,
+      destPath,
+      (prog) => {
+        finalBytes = prog.downloadedBytes;
+        const bar = renderProgressBar(prog.percent, 20);
+        const pct = `${prog.percent.toFixed(0)}%`.padStart(4);
+        const dl = formatBytes(prog.downloadedBytes);
+        const tot = prog.totalBytes > 0 ? formatBytes(prog.totalBytes) : "?";
+        const spd = `${formatBytes(prog.speedBps)}/s`;
 
-      const line = `  ${bar} ${pc.bold(pct)} ${pc.dim(`(${dl}/${tot} • ${spd})`)}`;
-      process.stdout.write(`\r${line}\x1b[K`);
-    });
+        const line = `  ${bar} ${pc.bold(pct)} ${pc.dim(`(${dl}/${tot} • ${spd})`)}`;
+        process.stdout.write(`\r${line}\x1b[K`);
+      },
+      {
+        ...(meta.url ? { Referer: meta.url } : {}),
+        ...(directUrl.includes("googlevideo.com")
+          ? { Referer: "https://desustream.net/" }
+          : {}),
+        ...(item.headers || {}),
+      },
+    );
 
     process.stdout.write("\r\x1b[2K");
     p.log.message(
@@ -829,6 +846,7 @@ async function handleScrapeAndDownload(targetUrl, options) {
               headers: {
                 "User-Agent": CHROME_UA,
                 Accept: "*/*",
+                ...(media.url ? { Referer: media.url } : {}),
                 ...(item.headers || {}),
               },
             });
@@ -994,6 +1012,23 @@ async function handleScrapeAndDownload(targetUrl, options) {
       selectedItem = downloads[formatChoice];
     }
 
+    if (selectedItem?.type === "link") {
+      const linkUrl = selectedItem.url;
+      await writeClipboard(linkUrl);
+      p.log.success(
+        `${pc.bold("✔ Mirror link copied to clipboard:")} ${pc.underline(pc.cyan(linkUrl))}`,
+      );
+      addToHistory({
+        url: targetUrl,
+        title: `${media.title || "Media"} (${selectedItem.quality || "Mirror"})`,
+        platform: media.platform,
+        filename: "",
+        path: linkUrl,
+        bytes: 0,
+      });
+      return true;
+    }
+
     await processDownloadItem({
       item: selectedItem,
       meta: media,
@@ -1004,6 +1039,460 @@ async function handleScrapeAndDownload(targetUrl, options) {
   }
 
   return true;
+}
+
+async function handleSearchAndDownload(query, forcedType = null, options = {}) {
+  const scrapr = loadScraprEngine();
+  let provider = null;
+
+  if (forcedType === "anime") {
+    const chosen = await p.select({
+      message: `Select Anime Provider for "${query}":`,
+      options: [
+        { value: "otakudesu", label: "Otakudesu (Indonesian Sub)" },
+        { value: "gogoanime", label: "Gogoanime (English Sub)" },
+      ],
+    });
+    if (p.isCancel(chosen)) return false;
+    provider = chosen;
+  } else if (forcedType === "comic") {
+    const chosen = await p.select({
+      message: `Select Comic Provider for "${query}":`,
+      options: [
+        { value: "komikindo", label: "Komikindo (Indonesian)" },
+        { value: "komiku", label: "Komiku (Indonesian)" },
+        { value: "asurascans", label: "Asura Scans (English / Manhwa)" },
+      ],
+    });
+    if (p.isCancel(chosen)) return false;
+    provider = chosen;
+  } else {
+    const chosen = await p.select({
+      message: `Search query "${query}":`,
+      options: [
+        { value: "otakudesu", label: "Anime • Otakudesu (Sub Indo)" },
+        { value: "gogoanime", label: "Anime • Gogoanime (Sub Eng)" },
+        { value: "komikindo", label: "Comic • Komikindo (Sub Indo)" },
+        { value: "komiku", label: "Comic • Komiku (Sub Indo)" },
+        { value: "asurascans", label: "Comic • Asura Scans (English)" },
+      ],
+    });
+    if (p.isCancel(chosen)) return false;
+    provider = chosen;
+  }
+
+  const s = p.spinner();
+
+  if (provider === "otakudesu") {
+    s.start(pc.dim(`Searching Otakudesu for "${query}"...`));
+    let searchRes;
+    try {
+      searchRes = await scrapr.anime.otakudesu.search(query);
+    } catch (err) {
+      s.stop(pc.bold(`✕ Search failed: ${err.message}`));
+      return false;
+    }
+    s.stop(pc.dim("Search complete."));
+
+    const items = searchRes?.result || [];
+    if (items.length === 0) {
+      p.log.warn(`No anime found for "${query}" on Otakudesu.`);
+      return false;
+    }
+
+    const animeChoices = items.map((it) => ({
+      value: it.url,
+      label: `${it.title} ${it.meta ? pc.dim(`(${it.meta})`) : ""}`,
+    }));
+    animeChoices.push({ value: "cancel", label: pc.dim("Cancel") });
+
+    const chosenAnimeUrl = await p.select({
+      message: `Select Anime (${items.length} found):`,
+      options: animeChoices,
+    });
+    if (p.isCancel(chosenAnimeUrl) || chosenAnimeUrl === "cancel") {
+      p.cancel("Cancelled.");
+      return false;
+    }
+
+    s.start(pc.dim("Fetching episode list..."));
+    let epRes;
+    try {
+      epRes = await scrapr.anime.otakudesu.getEpisodes(chosenAnimeUrl);
+    } catch (err) {
+      s.stop(pc.bold(`✕ Failed to fetch episodes: ${err.message}`));
+      return false;
+    }
+    s.stop(pc.dim("Episodes fetched."));
+
+    const episodes = epRes?.result || [];
+    if (episodes.length === 0) {
+      p.log.warn("No episodes found for this anime.");
+      return false;
+    }
+
+    const epChoices = episodes.map((ep) => ({
+      value: ep.url,
+      label: ep.title,
+    }));
+    epChoices.push({ value: "cancel", label: pc.dim("Cancel") });
+
+    const chosenEpUrl = await p.select({
+      message: `Select Episode (${episodes.length} episodes):`,
+      options: epChoices,
+    });
+    if (p.isCancel(chosenEpUrl) || chosenEpUrl === "cancel") {
+      p.cancel("Cancelled.");
+      return false;
+    }
+
+    return await handleScrapeAndDownload(chosenEpUrl, options);
+  }
+
+  if (provider === "gogoanime") {
+    s.start(pc.dim(`Searching Gogoanime for "${query}"...`));
+    let searchRes;
+    try {
+      searchRes = await scrapr.anime.gogoanime.search(query);
+    } catch (err) {
+      s.stop(pc.bold(`✕ Search failed: ${err.message}`));
+      return false;
+    }
+    s.stop(pc.dim("Search complete."));
+
+    const items = searchRes?.result || [];
+    if (items.length === 0) {
+      p.log.warn(`No anime found for "${query}" on Gogoanime.`);
+      return false;
+    }
+
+    const animeChoices = items.map((it) => ({
+      value: it.url,
+      label: it.title,
+    }));
+    animeChoices.push({ value: "cancel", label: pc.dim("Cancel") });
+
+    const chosenAnimeUrl = await p.select({
+      message: `Select Anime (${items.length} found):`,
+      options: animeChoices,
+    });
+    if (p.isCancel(chosenAnimeUrl) || chosenAnimeUrl === "cancel") {
+      p.cancel("Cancelled.");
+      return false;
+    }
+
+    s.start(pc.dim("Fetching episode list..."));
+    let epRes;
+    try {
+      epRes = await scrapr.anime.gogoanime.getEpisodes(chosenAnimeUrl);
+    } catch (err) {
+      s.stop(pc.bold(`✕ Failed to fetch episodes: ${err.message}`));
+      return false;
+    }
+    s.stop(pc.dim("Episodes fetched."));
+
+    const episodes = epRes?.result || [];
+    if (episodes.length === 0) {
+      p.log.warn("No episodes found for this anime.");
+      return false;
+    }
+
+    const epChoices = episodes.slice(0, 100).map((ep) => ({
+      value: ep.url,
+      label: ep.title,
+    }));
+    epChoices.push({ value: "cancel", label: pc.dim("Cancel") });
+
+    const chosenEpUrl = await p.select({
+      message: `Select Episode (${episodes.length} episodes):`,
+      options: epChoices,
+    });
+    if (p.isCancel(chosenEpUrl) || chosenEpUrl === "cancel") {
+      p.cancel("Cancelled.");
+      return false;
+    }
+
+    return await handleScrapeAndDownload(chosenEpUrl, options);
+  }
+
+  if (provider === "komikindo") {
+    s.start(pc.dim(`Searching Komikindo for "${query}"...`));
+    let searchRes;
+    try {
+      searchRes = await scrapr.comic.komikindo.search(query);
+    } catch (err) {
+      s.stop(pc.bold(`✕ Search failed: ${err.message}`));
+      return false;
+    }
+    s.stop(pc.dim("Search complete."));
+
+    const items = searchRes?.result || [];
+    if (items.length === 0) {
+      p.log.warn(`No comics found for "${query}" on Komikindo.`);
+      return false;
+    }
+
+    const comicChoices = items.map((it) => ({
+      value: it.url,
+      label: it.title,
+    }));
+    comicChoices.push({ value: "cancel", label: pc.dim("Cancel") });
+
+    const chosenComicUrl = await p.select({
+      message: `Select Comic (${items.length} found):`,
+      options: comicChoices,
+    });
+    if (p.isCancel(chosenComicUrl) || chosenComicUrl === "cancel") {
+      p.cancel("Cancelled.");
+      return false;
+    }
+
+    s.start(pc.dim("Fetching chapter list..."));
+    let chRes;
+    try {
+      chRes = await scrapr.comic.komikindo.getChapters(chosenComicUrl);
+    } catch (err) {
+      s.stop(pc.bold(`✕ Failed to fetch chapters: ${err.message}`));
+      return false;
+    }
+    s.stop(pc.dim("Chapters fetched."));
+
+    const chapters = chRes?.result || [];
+    if (chapters.length === 0) {
+      p.log.warn("No chapters found for this comic.");
+      return false;
+    }
+
+    const chChoices = chapters.slice(0, 100).map((ch) => ({
+      value: ch.url,
+      label: ch.title,
+    }));
+    chChoices.push({ value: "cancel", label: pc.dim("Cancel") });
+
+    const chosenChUrl = await p.select({
+      message: `Select Chapter (${chapters.length} available):`,
+      options: chChoices,
+    });
+    if (p.isCancel(chosenChUrl) || chosenChUrl === "cancel") {
+      p.cancel("Cancelled.");
+      return false;
+    }
+
+    return await handleScrapeAndDownload(chosenChUrl, options);
+  }
+
+  if (provider === "komiku") {
+    s.start(pc.dim(`Searching Komiku for "${query}"...`));
+    let searchRes;
+    try {
+      searchRes = await scrapr.comic.komiku.search(query);
+    } catch (err) {
+      s.stop(pc.bold(`✕ Search failed: ${err.message}`));
+      return false;
+    }
+    s.stop(pc.dim("Search complete."));
+
+    const items = searchRes?.result || [];
+    if (items.length === 0) {
+      p.log.warn(`No comics found for "${query}" on Komiku.`);
+      return false;
+    }
+
+    const comicChoices = items.map((it) => ({
+      value: it.url,
+      label: it.title,
+    }));
+    comicChoices.push({ value: "cancel", label: pc.dim("Cancel") });
+
+    const chosenComicUrl = await p.select({
+      message: `Select Comic (${items.length} found):`,
+      options: comicChoices,
+    });
+    if (p.isCancel(chosenComicUrl) || chosenComicUrl === "cancel") {
+      p.cancel("Cancelled.");
+      return false;
+    }
+
+    s.start(pc.dim("Fetching chapter list..."));
+    let chRes;
+    try {
+      chRes = await scrapr.comic.komiku.getChapters(chosenComicUrl);
+    } catch (err) {
+      s.stop(pc.bold(`✕ Failed to fetch chapters: ${err.message}`));
+      return false;
+    }
+    s.stop(pc.dim("Chapters fetched."));
+
+    const chapters = chRes?.result || [];
+    if (chapters.length === 0) {
+      p.log.warn("No chapters found for this comic.");
+      return false;
+    }
+
+    const chChoices = chapters.slice(0, 100).map((ch) => ({
+      value: ch.url,
+      label: ch.title,
+    }));
+    chChoices.push({ value: "cancel", label: pc.dim("Cancel") });
+
+    const chosenChUrl = await p.select({
+      message: `Select Chapter (${chapters.length} available):`,
+      options: chChoices,
+    });
+    if (p.isCancel(chosenChUrl) || chosenChUrl === "cancel") {
+      p.cancel("Cancelled.");
+      return false;
+    }
+
+    return await handleScrapeAndDownload(chosenChUrl, options);
+  }
+
+  if (provider === "asurascans") {
+    s.start(pc.dim(`Searching Asura Scans for "${query}"...`));
+    let searchRes;
+    try {
+      searchRes = await scrapr.comic.asurascans.search(query);
+    } catch (err) {
+      s.stop(pc.bold(`✕ Search failed: ${err.message}`));
+      return false;
+    }
+    s.stop(pc.dim("Search complete."));
+
+    const items = searchRes?.result || [];
+    if (items.length === 0) {
+      p.log.warn(`No comics found for "${query}" on Asura Scans.`);
+      return false;
+    }
+
+    const comicChoices = items.map((it) => ({
+      value: it.url,
+      label: `${it.title} ${it.status ? pc.dim(`[${it.status}]`) : ""}`,
+    }));
+    comicChoices.push({ value: "cancel", label: pc.dim("Cancel") });
+
+    const chosenComicUrl = await p.select({
+      message: `Select Comic (${items.length} found):`,
+      options: comicChoices,
+    });
+    if (p.isCancel(chosenComicUrl) || chosenComicUrl === "cancel") {
+      p.cancel("Cancelled.");
+      return false;
+    }
+
+    s.start(pc.dim("Fetching chapter list..."));
+    let chRes;
+    try {
+      chRes = await scrapr.comic.asurascans.getChapters(chosenComicUrl);
+    } catch (err) {
+      s.stop(pc.bold(`✕ Failed to fetch chapters: ${err.message}`));
+      return false;
+    }
+    s.stop(pc.dim("Chapters fetched."));
+
+    const chapters = chRes?.result || [];
+    if (chapters.length === 0) {
+      p.log.warn("No chapters found for this comic.");
+      return false;
+    }
+
+    const chChoices = chapters.slice(0, 100).map((ch) => ({
+      value: ch.url,
+      label: ch.title,
+    }));
+    chChoices.push({ value: "cancel", label: pc.dim("Cancel") });
+
+    const chosenChUrl = await p.select({
+      message: `Select Chapter (${chapters.length} available):`,
+      options: chChoices,
+    });
+    if (p.isCancel(chosenChUrl) || chosenChUrl === "cancel") {
+      p.cancel("Cancelled.");
+      return false;
+    }
+
+    return await handleScrapeAndDownload(chosenChUrl, options);
+  }
+
+  return false;
+}
+
+async function handleRollbackMori() {
+  const s = p.spinner();
+  s.start(pc.dim("Fetching Mori Engine commit history from GitHub..."));
+  const history = await fetchMoriEngineHistory();
+  s.stop(pc.dim("History fetched."));
+
+  if (history.length === 0) {
+    p.log.warn("Could not fetch Mori Core commit history from GitHub.");
+    return false;
+  }
+
+  const currentVer = getActiveScraperVersion();
+  const commitChoice = await p.select({
+    message: `Select Mori Core version / commit (Current: v${currentVer || "none"}):`,
+    options: [
+      ...history.map((h, idx) => ({
+        value: h.fullSha,
+        label: `[${h.sha}] ${h.message}`,
+        hint: `${idx === 0 ? "Latest • " : ""}${h.date ? h.date.split("T")[0] : ""}`,
+      })),
+      { value: "cancel", label: pc.dim("Cancel") },
+    ],
+  });
+
+  if (p.isCancel(commitChoice) || commitChoice === "cancel") return false;
+
+  const dlSpin = p.spinner();
+  dlSpin.start(pc.dim("Downloading Mori Core bundle..."));
+  try {
+    const res = await downloadMoriEngineByCommit(commitChoice, (msg) => {
+      dlSpin.message(pc.dim(msg));
+    });
+    dlSpin.stop(pc.bold(`✔ Mori Core Engine installed (v${res.version}).`));
+    return true;
+  } catch (err) {
+    dlSpin.stop(pc.bold(`✕ Installation failed: ${err.message}`));
+    return false;
+  }
+}
+
+async function handleRollbackScrapr() {
+  const s = p.spinner();
+  s.start(pc.dim("Fetching available Scrapr versions from NPM..."));
+  const versions = await fetchScraprEngineVersions();
+  s.stop(pc.dim("Versions fetched."));
+
+  if (versions.length === 0) {
+    p.log.warn("Could not fetch Scrapr versions from registry.");
+    return false;
+  }
+
+  const currentVer = getActiveScraprVersion();
+  const verChoice = await p.select({
+    message: `Select Scrapr version to install (Current: v${currentVer || "none"}):`,
+    options: [
+      ...versions.slice(0, 15).map((v) => ({
+        value: v,
+        label: `v${v}${v === currentVer ? pc.green(" (current)") : ""}`,
+      })),
+      { value: "cancel", label: pc.dim("Cancel") },
+    ],
+  });
+
+  if (p.isCancel(verChoice) || verChoice === "cancel") return false;
+
+  const dlSpin = p.spinner();
+  dlSpin.start(pc.dim(`Installing Scrapr Engine v${verChoice}...`));
+  try {
+    const res = await downloadScraprEngineVersion(verChoice, (msg) => {
+      dlSpin.message(pc.dim(msg));
+    });
+    dlSpin.stop(pc.bold(`✔ Scrapr Engine v${res.version} installed.`));
+    return true;
+  } catch (err) {
+    dlSpin.stop(pc.bold(`✕ Installation failed: ${err.message}`));
+    return false;
+  }
 }
 
 async function main() {
@@ -1163,6 +1652,26 @@ async function main() {
   let lastUrl = null;
 
   if (targetUrl) {
+    const isUrl =
+      targetUrl.startsWith("http://") || targetUrl.startsWith("https://");
+    if (!isUrl) {
+      lastUrl = targetUrl;
+      await handleSearchAndDownload(targetUrl, null, {
+        ...values,
+        output: currentOutputDir,
+      });
+      const newVer = await cliUpdatePromise;
+      if (newVer) {
+        p.log.message(
+          pc.yellow(
+            `● Update available: v${APP_VERSION} → v${newVer} (run: npm i -g @coflyn/mori)`,
+          ),
+        );
+      }
+      p.outro(pc.dim("Complete."));
+      process.exit(0);
+    }
+
     const platform = detectPlatform(targetUrl);
     if (!platform) {
       p.log.error(`Unsupported URL: ${targetUrl}`);
@@ -1198,17 +1707,22 @@ async function main() {
 
     while (keepGoing) {
       const urlInput = await p.text({
-        message: "Paste link:",
-        placeholder: "https://... or type /help",
+        message: "Paste link or search title:",
+        placeholder: "https://..., anime/comic title, or type /help",
         validate: (val) => {
           if (!val || val.trim().length === 0)
-            return "Please enter a URL or /command.";
+            return "Please enter a URL, title, or /command.";
           const clean = val.trim().toLowerCase();
           if (clean === "exit" || clean === "quit" || clean === "q")
             return undefined;
           if (clean.startsWith("/")) return undefined;
-          if (!detectPlatform(val.trim())) {
-            return "Platform not supported. Type /platform to view supported platforms.";
+          if (
+            val.trim().startsWith("http://") ||
+            val.trim().startsWith("https://")
+          ) {
+            if (!detectPlatform(val.trim())) {
+              return "Platform not supported. Type /platform to view supported platforms.";
+            }
           }
           return undefined;
         },
@@ -1242,13 +1756,57 @@ async function main() {
               `${pc.bold("Photo/Art   :")} Pinterest, Pixiv, RedNote (Xiaohongshu)`,
               `${pc.bold("Cloud/Files :")} TeraBox, MediaFire, Sfile, Catbox, Pixeldrain, Krakenfiles, Google Drive`,
               `${pc.bold("Resolvers   :")} SafeLinkU, Sub2Unlock, Rekonise, Link Unshortener`,
+              `${pc.bold("Comic/Manga :")} Kiryuu, Komikcast, MangaDex, Komikindo, Komiku, Bacakomik, ManhwaIndo, Asura Scans, MangaBats`,
+              `${pc.bold("Anime       :")} Otakudesu, Nimegami, Gogoanime, AnimeTosho`,
             ];
-            p.note(platformList.join("\n"), pc.dim("Supported Platforms (27 • Dual-Engine)"));
+            p.note(platformList.join("\n"), pc.dim("Supported Platforms (40 • Dual-Engine)"));
+            break;
+          }
+
+          case "anime": {
+            let query = args.join(" ").trim();
+            if (!query) {
+              const qInput = await p.text({
+                message: "Enter anime title to search:",
+                placeholder: "e.g. majo no tabi tabi",
+                validate: (v) => (!v || !v.trim() ? "Title required." : undefined),
+              });
+              if (p.isCancel(qInput)) break;
+              query = qInput.trim();
+            }
+            await handleSearchAndDownload(query, "anime", {
+              ...values,
+              output: currentOutputDir,
+            });
+            break;
+          }
+
+          case "comic":
+          case "manga": {
+            let query = args.join(" ").trim();
+            if (!query) {
+              const qInput = await p.text({
+                message: "Enter comic/manga title to search:",
+                placeholder: "e.g. solo leveling",
+                validate: (v) => (!v || !v.trim() ? "Title required." : undefined),
+              });
+              if (p.isCancel(qInput)) break;
+              query = qInput.trim();
+            }
+            await handleSearchAndDownload(query, "comic", {
+              ...values,
+              output: currentOutputDir,
+            });
             break;
           }
 
           case "play": {
-            const items = getHistory(15);
+            const items = getHistory(25);
+            if (items.length === 0) {
+              p.log.warn("No download history found to play.");
+              break;
+            }
+
             let targetItem = null;
             let targetNum = 1;
 
@@ -1266,13 +1824,6 @@ async function main() {
               } else {
                 const customPath = path.resolve(args.join(" "));
                 if (fs.existsSync(customPath)) {
-                  const ext = path.extname(customPath).toLowerCase();
-                  if (ext !== ".mp4" && ext !== ".mp3" && ext !== ".m4a") {
-                    p.log.warn(
-                      `Cannot play ${ext ? ext.toUpperCase() : "this"} file. /play is only for MP4 and MP3 (use /open to view files).`,
-                    );
-                    break;
-                  }
                   try {
                     await openFile(customPath);
                     p.log.step(`${pc.bold("Playing:")} ${pc.dim(customPath)}`);
@@ -1281,46 +1832,45 @@ async function main() {
                   }
                   break;
                 }
+                p.log.error(`File does not exist: ${customPath}`);
+                break;
               }
             } else {
-              if (items.length > 0) {
-                const playIdx = items.findIndex((it) => {
-                  const ext = path
-                    .extname(it.path || it.filename || "")
-                    .toLowerCase();
-                  return ext === ".mp4" || ext === ".mp3" || ext === ".m4a";
-                });
-                if (playIdx !== -1) {
-                  targetItem = items[playIdx];
-                  targetNum = playIdx + 1;
-                } else {
-                  targetItem = items[0];
-                }
-              }
-            }
+              const selectChoice = await p.select({
+                message: "Select media to play:",
+                options: [
+                  ...items.map((it, idx) => {
+                    const ext = path
+                      .extname(it.path || it.filename || "")
+                      .toLowerCase();
+                    const typeLabel =
+                      ext === ".mp4" || ext === ".mkv" || ext === ".webm"
+                        ? "VIDEO"
+                        : ext === ".mp3" || ext === ".m4a" || ext === ".wav"
+                          ? "AUDIO"
+                          : ext === ".pdf"
+                            ? "PDF"
+                            : ext.slice(1).toUpperCase() || "MEDIA";
+                    return {
+                      value: idx,
+                      label: `[#${idx + 1}] ${it.filename || it.title || "Media"}`,
+                      hint: `${it.platform || "media"} • ${typeLabel}`,
+                    };
+                  }),
+                  { value: -1, label: pc.dim("Cancel") },
+                ],
+              });
 
-            if (!targetItem) {
-              p.log.warn("No downloaded media found in history to play.");
-              break;
+              if (p.isCancel(selectChoice) || selectChoice === -1) {
+                break;
+              }
+              targetItem = items[selectChoice];
+              targetNum = selectChoice + 1;
             }
 
             if (!targetItem.path || !fs.existsSync(targetItem.path)) {
               p.log.error(
                 `File no longer exists: ${targetItem.path || targetItem.filename}`,
-              );
-              break;
-            }
-
-            const fileExt = path
-              .extname(targetItem.path || targetItem.filename || "")
-              .toLowerCase();
-            if (
-              fileExt !== ".mp4" &&
-              fileExt !== ".mp3" &&
-              fileExt !== ".m4a"
-            ) {
-              p.log.warn(
-                `Item #${targetNum} is a ${fileExt ? fileExt.toUpperCase() : "non-audio/video"} file. /play is only for MP4 and MP3 (type /open to view files).`,
               );
               break;
             }
@@ -1339,63 +1889,96 @@ async function main() {
           case "delete":
           case "del":
           case "rm": {
-            const items = getHistory(20);
+            const items = getHistory(25);
             if (items.length === 0) {
               p.log.warn("No download history to delete.");
               break;
             }
 
-            let targetIndex = -1;
+            let targetIndices = [];
 
             if (args[0]) {
-              const numArg = parseInt(args[0], 10);
-              if (isNaN(numArg) || numArg < 1 || numArg > items.length) {
+              const rawIndices = args[0]
+                .split(",")
+                .map((s) => parseInt(s.trim(), 10));
+              const validIndices = rawIndices
+                .filter((n) => !isNaN(n) && n >= 1 && n <= items.length)
+                .map((n) => n - 1);
+
+              if (validIndices.length === 0) {
                 p.log.warn(
                   `Invalid index. Available range: 1 to ${items.length}.`,
                 );
                 break;
               }
-              targetIndex = numArg - 1;
+              targetIndices = validIndices;
             } else {
-              const selectChoice = await p.select({
-                message: "Select item to delete:",
+              const selectedChoices = await p.multiselect({
+                message:
+                  "Select item(s) to delete (Space to toggle, Enter to confirm):",
                 options: [
                   ...items.map((it, idx) => ({
                     value: idx,
                     label: `[#${idx + 1}] ${it.filename || it.title || "Media"}`,
                     hint: it.platform || "",
                   })),
-                  { value: -1, label: pc.dim("Cancel") },
                 ],
+                required: false,
               });
 
-              if (p.isCancel(selectChoice) || selectChoice === -1) {
+              if (p.isCancel(selectedChoices) || selectedChoices.length === 0) {
+                p.log.step(pc.dim("Deletion cancelled."));
                 break;
               }
-              targetIndex = selectChoice;
+              targetIndices = selectedChoices;
             }
 
-            const itemToDelete = items[targetIndex];
-            const confirm = await p.confirm({
-              message: `Delete "${itemToDelete.filename || itemToDelete.title}" from disk and history?`,
-              initialValue: false,
+            const targetNames = targetIndices
+              .map(
+                (i) => `[#${i + 1}] ${items[i]?.filename || items[i]?.title}`,
+              )
+              .join(", ");
+
+            const deleteMode = await p.select({
+              message:
+                targetIndices.length === 1
+                  ? `Delete "${items[targetIndices[0]]?.filename || items[targetIndices[0]]?.title}":`
+                  : `Delete ${targetIndices.length} item(s) (${targetNames}):`,
+              options: [
+                {
+                  value: "both",
+                  label: "Delete from disk & remove from history",
+                  hint: "Permanently deletes the physical file",
+                },
+                {
+                  value: "history",
+                  label: "Remove from history only",
+                  hint: "Keeps the file safe on disk",
+                },
+                { value: "cancel", label: pc.dim("Cancel") },
+              ],
             });
 
-            if (p.isCancel(confirm) || !confirm) {
+            if (p.isCancel(deleteMode) || deleteMode === "cancel") {
               p.log.step(pc.dim("Deletion cancelled."));
               break;
             }
 
-            const res = deleteHistoryItem(targetIndex, true);
+            const deleteFromDisk = deleteMode === "both";
+            const res = deleteHistoryItems(targetIndices, deleteFromDisk);
             if (res.success) {
-              const fileNote = res.fileDeleted
-                ? pc.dim("(deleted from disk & removed from history)")
-                : pc.dim("(removed from history; file was not on disk)");
+              const fileNote = deleteFromDisk
+                ? res.filesDeletedCount > 0
+                  ? pc.dim(
+                      `(${res.filesDeletedCount} file(s) deleted from disk & removed from history)`,
+                    )
+                  : pc.dim(`(removed from history; file(s) not found on disk)`)
+                : pc.dim(`(removed from history; file(s) preserved on disk)`);
               p.log.step(
-                `${pc.bold("✔ Deleted:")} ${pc.white(itemToDelete.filename || itemToDelete.title)} ${fileNote}`,
+                `${pc.bold("✔ Deleted:")} ${pc.white(`${res.count} item(s)`)} ${fileNote}`,
               );
             } else {
-              p.log.error(`Failed to delete item: ${res.error}`);
+              p.log.error(`Failed to delete items: ${res.error}`);
             }
             break;
           }
@@ -1623,13 +2206,23 @@ async function main() {
                 options: [
                   {
                     value: "reinstall_mori",
-                    label: "Reinstall Mori Engine (~80 KB)",
+                    label: "Reinstall Latest Mori Engine (~80 KB)",
                     hint: moriInst ? "Re-fetch latest bundle" : "Install",
                   },
                   {
                     value: "reinstall_scrapr",
-                    label: "Reinstall Scrapr Engine (~2.7 MB)",
+                    label: "Reinstall Latest Scrapr Engine (~2.7 MB)",
                     hint: scraprInst ? "Re-fetch latest bundle" : "Install",
+                  },
+                  {
+                    value: "version_mori",
+                    label: "Choose / Downgrade Mori Core Version...",
+                    hint: "Install specific commit from GitHub",
+                  },
+                  {
+                    value: "version_scrapr",
+                    label: "Choose / Downgrade Scrapr Engine Version...",
+                    hint: "Install specific release from NPM",
                   },
                   ...(moriInst
                     ? [
@@ -1673,6 +2266,10 @@ async function main() {
                 } catch (err) {
                   s.stop(pc.bold(`✕ Failed: ${err.message}`));
                 }
+              } else if (mgmtChoice === "version_mori") {
+                await handleRollbackMori();
+              } else if (mgmtChoice === "version_scrapr") {
+                await handleRollbackScrapr();
               } else if (mgmtChoice === "uninstall_mori") {
                 uninstallMoriEngine();
                 p.log.message(pc.dim("✔ Mori Engine uninstalled."));
@@ -1729,6 +2326,35 @@ async function main() {
             p.log.message(
               `${pc.bold("● Default engine set:")} ${pc.white(choice)}`,
             );
+            break;
+          }
+
+          case "rollback":
+          case "downgrade": {
+            const rbChoice = await p.select({
+              message: "Select engine to rollback / choose version:",
+              options: [
+                {
+                  value: "mori",
+                  label: "Mori Core Engine",
+                  hint: `Current: v${getActiveScraperVersion() || "not installed"}`,
+                },
+                {
+                  value: "scrapr",
+                  label: "Scrapr Engine",
+                  hint: `Current: v${getActiveScraprVersion() || "not installed"}`,
+                },
+                { value: "cancel", label: pc.dim("Cancel") },
+              ],
+            });
+
+            if (p.isCancel(rbChoice) || rbChoice === "cancel") break;
+
+            if (rbChoice === "mori") {
+              await handleRollbackMori();
+            } else if (rbChoice === "scrapr") {
+              await handleRollbackScrapr();
+            }
             break;
           }
 
@@ -1806,13 +2432,14 @@ async function main() {
               break;
             }
 
-            const items = getHistory(15);
+            const items = getHistory(25);
             if (items.length === 0) {
               p.log.message(pc.dim("No download history yet."));
               break;
             }
 
-            // Check if user specified an iteration number, e.g. /history 1
+            let selectedIndex = -1;
+
             const numArg = parseInt(args[0], 10);
             if (!isNaN(numArg)) {
               if (numArg < 1 || numArg > items.length) {
@@ -1821,40 +2448,56 @@ async function main() {
                 );
                 break;
               }
-              const selected = items[numArg - 1];
-              if (!selected.url) {
-                p.log.warn(
-                  `Item #${numArg} has no recorded source URL (downloaded prior to URL tracking).`,
-                );
+              selectedIndex = numArg - 1;
+            } else {
+              const choice = await p.select({
+                message: "Download History (Select to re-download):",
+                options: [
+                  ...items.map((it, idx) => ({
+                    value: idx,
+                    label: `[#${idx + 1}] ${it.filename || it.title || "Media"}`,
+                    hint: `${it.platform?.toUpperCase() || ""}${it.timestamp ? ` • ${formatRelativeTime(it.timestamp)}` : ""}`,
+                  })),
+                  { value: "clear", label: pc.red("🗑  Clear all history") },
+                  { value: "cancel", label: pc.dim("Cancel") },
+                ],
+              });
+
+              if (p.isCancel(choice) || choice === "cancel") {
                 break;
               }
-              p.log.message(
-                `${pc.bold("● Re-downloading from history:")} ${pc.inverse(` ${selected.platform?.toUpperCase()} `)} ${pc.dim(selected.url)}`,
-              );
-              lastUrl = selected.url;
-              await handleScrapeAndDownload(selected.url, {
-                ...values,
-                output: currentOutputDir,
-              });
-              break;
+
+              if (choice === "clear") {
+                const confirmClear = await p.confirm({
+                  message:
+                    "Are you sure you want to clear all download history?",
+                  initialValue: false,
+                });
+                if (confirmClear && !p.isCancel(confirmClear)) {
+                  clearHistory();
+                  p.log.message(pc.dim("Download history cleared."));
+                }
+                break;
+              }
+
+              selectedIndex = choice;
             }
 
-            const historyLines = items.map((it, idx) => {
-              const num = pc.bold(`[${idx + 1}]`);
-              const badge = pc.inverse(` ${it.platform.toUpperCase()} `);
-              const name = pc.bold(it.filename || it.title || "Media");
-              const rel = it.timestamp
-                ? pc.dim(`(${formatRelativeTime(it.timestamp)})`)
-                : "";
-              return `${num} ${badge} ${name} ${rel}`;
-            });
-
-            p.note(
-              historyLines.join("\n"),
-              pc.dim(
-                `Recent Downloads (${items.length}) • /history <num> to redownload • /history clear to reset`,
-              ),
+            const selected = items[selectedIndex];
+            if (!selected.url) {
+              p.log.warn(
+                `Item #${selectedIndex + 1} has no recorded source URL (downloaded prior to URL tracking).`,
+              );
+              break;
+            }
+            p.log.message(
+              `${pc.bold("● Re-downloading from history:")} ${pc.inverse(` ${selected.platform?.toUpperCase()} `)} ${pc.dim(selected.url)}`,
             );
+            lastUrl = selected.url;
+            await handleScrapeAndDownload(selected.url, {
+              ...values,
+              output: currentOutputDir,
+            });
             break;
           }
 
@@ -2077,24 +2720,27 @@ async function main() {
           case "help":
           case "?": {
             const cmds = [
+              `${pc.bold("/anime [query]")}  Search and download anime episodes`,
+              `${pc.bold("/comic [query]")}  Search and download comic chapters (supports PDF)`,
               `${pc.bold("/clip")}          Download link currently in clipboard`,
               `${pc.bold("/audio [url]")}   Download audio stream only (MP3/M4A)`,
               `${pc.bold("/pdf [url]")}     Download photo album compiled directly into 1 PDF`,
-              `${pc.bold("/play [num]")}    Play downloaded media in default system player`,
+              `${pc.bold("/play [num]")}    Interactive media player picker (or /play <num>)`,
               `${pc.bold("/ping [host]")}   Check user network latency (default: 1.1.1.1)`,
               `${pc.bold("/info [url]")}    Inspect media details without downloading`,
               `${pc.bold("/retry")}         Re-download the last link processed`,
               `${pc.bold("/batch")}         Bulk download multiple links at once`,
-              `${pc.bold("/platform")}      List all 27 supported media platforms`,
+              `${pc.bold("/platform")}      List all 40 supported media platforms`,
               `${pc.bold("/dir")}           View or set download directory (persistent)`,
               `${pc.bold("/open")}          Open download folder in file manager`,
               `${pc.bold("/engine")}        Set default extraction engine (auto/mori/scrapr)`,
               `${pc.bold("/server")}        Set default scraper server (auto/1/2)`,
-              `${pc.bold("/history [num]")}  View or redownload history item (/history 1, /history clear)`,
-              `${pc.bold("/delete [num]")}   Delete downloaded file from disk and history`,
+              `${pc.bold("/history")}       Interactive download history & redownload picker`,
+              `${pc.bold("/delete")}        Interactive bulk delete from disk & history (Space)`,
               `${pc.bold("/stats")}         View total downloads & storage statistics`,
               `${pc.bold("/config")}        Show active Mori configuration`,
               `${pc.bold("/update")}        Check and apply remote OTA scraper patches`,
+              `${pc.bold("/rollback")}      Rollback or install specific engine versions`,
               `${pc.bold("/reset")}         Factory reset Mori config, cache, & history`,
               `${pc.bold("/clear")}         Clear screen and reprint header`,
               `${pc.bold("/exit, /q")}      Exit Mori CLI`,
@@ -2122,10 +2768,17 @@ async function main() {
       }
 
       lastUrl = rawInput;
-      await handleScrapeAndDownload(rawInput, {
-        ...values,
-        output: currentOutputDir,
-      });
+      if (!rawInput.startsWith("http://") && !rawInput.startsWith("https://")) {
+        await handleSearchAndDownload(rawInput, null, {
+          ...values,
+          output: currentOutputDir,
+        });
+      } else {
+        await handleScrapeAndDownload(rawInput, {
+          ...values,
+          output: currentOutputDir,
+        });
+      }
 
       const next = await p.confirm({
         message: "Continue?",
