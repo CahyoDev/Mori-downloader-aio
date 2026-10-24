@@ -5,6 +5,31 @@ All notable changes to the Mori CLI (`@coflyn/mori`) will be documented in this 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-10-25
+
+### Added
+- **Interactive Anime & Comic Discovery**:
+  - Type titles directly (e.g. `solo leveling`, `frieren`) into the CLI prompt to trigger search across Anime and Comic providers.
+  - **Anime Providers**: Otakudesu (Sub Indo) and Gogoanime (Sub Eng) with episode selectors and multi-server stream extraction.
+  - **Comic Providers**: Komikindo (Indonesian), Komiku (Indonesian), and Asura Scans (English / Manhwa) with chapter navigation.
+- **Manga Chapter PDF Compilation**:
+  - Download comic chapters as individual page images or automatically compile them into a single clean PDF document.
+- **Web Player & HLS Stream Support**:
+  - Prioritizes embed web player links for seamless browser playback without Cloudflare WAF blocks.
+  - Direct master HLS m3u8 streams labeled with media player headers (`Referer`) for VLC, mpv, and ffmpeg.
+- **Interactive Media Player & History Pickers**:
+  - Replaced manual numeric input in `/play` and `/history` with interactive select menus displaying media badges (Video, Audio, PDF) and relative download timestamps.
+- **Bulk Multiselect Deletion (`/delete`)**:
+  - Upgraded `/delete` to an interactive multiselect list allowing users to toggle multiple items with `Space` and confirm with `Enter`, with dual deletion modes: delete from disk & history or remove from history only.
+- **Engine Rollback & Version Selector (`/rollback`)**:
+  - Rollback or install specific versions of scraper engines if an update introduces upstream breaking changes.
+  - **Mori Core Engine**: Browse and install previous bundles directly via GitHub commit history.
+  - **Scrapr Engine**: Browse and install previous releases directly from the NPM registry.
+  - Accessible via `/rollback` or `/engine` management menu.
+
+### Fixed
+- **Facebook SnapSave Extraction**: Fixed `(0, j.decodeSnapSave) is not a function` error when extracting Facebook media by defining `decodeSnapSave` and `extractFinalUrl` in engine runtime dependencies ([#18](https://github.com/coflyn/Mori/issues/18)).
+
 ## [1.1.0] - 2026-10-21
 
 ### Added

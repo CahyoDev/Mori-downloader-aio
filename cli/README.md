@@ -46,7 +46,7 @@ mori
 
 ---
 
-## 🌐 Supported Platforms (16)
+## 🌐 Supported Platforms & Media
 
 | Platform                  | Capabilities                                                |
 | :------------------------ | :---------------------------------------------------------- |
@@ -66,6 +66,8 @@ mori
 | **Pixiv**                 | Artwork galleries and animated Ugoira                       |
 | **Bandcamp**              | Individual songs and full discographies                     |
 | **TeraBox**               | Direct stream extraction                                    |
+| **Anime**                 | Interactive search & episode stream resolution (Otakudesu Sub Indo, Gogoanime Sub Eng) |
+| **Comic / Manga**         | Interactive chapter search, image extraction, and PDF compilation (Komikindo, Komiku, Asura Scans) |
 
 ---
 
