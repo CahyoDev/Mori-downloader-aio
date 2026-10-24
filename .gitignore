@@ -40,13 +40,11 @@ npm-debug.log*
 .vscode/
 .idea/
 *.iml
-
-# Tauri Desktop Build
-src-tauri/target/
-src-tauri/gen/
+.settings/
+.project
+.classpath
 
 # Private Core Scrapers Source & Build Tools
 src-scrapers/
 scripts/
 android/app/src/main/cpp/
-src-tauri/cpp/
