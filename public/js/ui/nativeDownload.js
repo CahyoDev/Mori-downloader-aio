@@ -160,7 +160,7 @@ export async function startNativeDownload(
   const isMultiDownload =
     window._moriPlaylistDownloading || window._moriActiveDownloadsCount > 1;
 
-  let effectiveTitle = title || "Mori Media";
+  let effectiveTitle = title || "Miko Media";
   const dlId = `dl_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
   let itemCancelled = false;
 
@@ -196,9 +196,9 @@ export async function startNativeDownload(
 
     // Acquire Wake Lock & Start Native Foreground Service
     requestWakeLock();
-    if (window.MoriMainBridge?.startDownloadService) {
+    if (window.MikoMainBridge?.startDownloadService) {
       try {
-        window.MoriMainBridge.startDownloadService(
+        window.MikoMainBridge.startDownloadService(
           `Downloading ${platformLabel} ${type || ""}`,
         );
       } catch (e) {
@@ -284,20 +284,20 @@ export async function startNativeDownload(
     const rawMusicFolder = (localStorage.getItem("mori_music_path") || "").trim();
 
     const isAndroid = window.Capacitor?.getPlatform?.() === "android";
-    const hasAllFiles = isAndroid && window.MoriMainBridge?.hasAllFilesPermission
-      ? window.MoriMainBridge.hasAllFilesPermission()
+    const hasAllFiles = isAndroid && window.MikoMainBridge?.hasAllFilesPermission
+      ? window.MikoMainBridge.hasAllFilesPermission()
       : true;
 
-    const defaultVideoFolder = "Download/Mori";
-    const defaultMusicFolder = isAndroid ? "Download/Mori/Music" : "Music/Mori";
+    const defaultVideoFolder = "Download/Miko";
+    const defaultMusicFolder = isAndroid ? "Download/Miko/Music" : "Music/Miko";
 
     let targetFolder = isAudio
       ? (rawMusicFolder || defaultMusicFolder)
       : (rawVideoFolder || defaultVideoFolder);
 
-    if (targetFolder === "Mori") {
+    if (targetFolder === "Miko") {
       targetFolder = defaultVideoFolder;
-    } else if (targetFolder === "Mori/Music") {
+    } else if (targetFolder === "Miko/Music") {
       targetFolder = defaultMusicFolder;
     }
 
@@ -306,10 +306,10 @@ export async function startNativeDownload(
       (isAudio ? defaultMusicFolder : defaultVideoFolder);
 
     // Android Scoped Storage fallback:
-    // If All Files Access is not granted, automatically save into Download/Mori default
+    // If All Files Access is not granted, automatically save into Download/Miko default
     if (isAndroid && !hasAllFiles) {
       if (!targetFolder.toLowerCase().startsWith("download")) {
-        targetFolder = isAudio ? "Download/Mori/Music" : "Download/Mori";
+        targetFolder = isAudio ? "Download/Miko/Music" : "Download/Miko";
       }
     }
 
@@ -454,10 +454,10 @@ export async function startNativeDownload(
     // Trigger System Tray Notification when download fails
     if (
       !window._moriPlaylistDownloading &&
-      window.MoriMainBridge?.showFailedNotification
+      window.MikoMainBridge?.showFailedNotification
     ) {
       try {
-        window.MoriMainBridge.showFailedNotification(
+        window.MikoMainBridge.showFailedNotification(
           effectiveTitle || "Media",
           errorMsg,
         );
@@ -497,9 +497,9 @@ export async function startNativeDownload(
     window.dispatchEvent(new CustomEvent("mori_download_ended"));
     if (!window._moriPlaylistDownloading) {
       releaseWakeLock();
-      if (window.MoriMainBridge?.stopDownloadService) {
+      if (window.MikoMainBridge?.stopDownloadService) {
         try {
-          window.MoriMainBridge.stopDownloadService();
+          window.MikoMainBridge.stopDownloadService();
         } catch (_) {}
       }
     }

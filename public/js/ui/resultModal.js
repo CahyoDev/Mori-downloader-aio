@@ -75,7 +75,7 @@ export function getCleanDirectoryPath(item, rawFile, itemType) {
       ));
 
   if (isPdf) {
-    return localStorage.getItem("mori_pdf_path") || "Download/Mori";
+    return localStorage.getItem("mori_pdf_path") || "Download/Miko";
   }
 
   const isAudio =
@@ -92,7 +92,7 @@ export function getCleanDirectoryPath(item, rawFile, itemType) {
         item.url.includes("music.apple")));
 
   if (isAudio) {
-    return localStorage.getItem("mori_music_path") || "Music/Mori";
+    return localStorage.getItem("mori_music_path") || "Music/Miko";
   }
 
   const isPhoto =
@@ -106,13 +106,13 @@ export function getCleanDirectoryPath(item, rawFile, itemType) {
     (item?.url && item.url.includes("pinterest"));
 
   if (isPhoto) {
-    return localStorage.getItem("mori_photo_path") || "Pictures/Mori";
+    return localStorage.getItem("mori_photo_path") || "Pictures/Miko";
   }
 
   return (
     localStorage.getItem("mori_download_path") ||
     localStorage.getItem("mori_video_path") ||
-    "Download/Mori"
+    "Download/Miko"
   );
 }
 
@@ -470,8 +470,8 @@ export async function showModal(item, onRedownload) {
             const opened = await openNativeFolder(dirPath || rawPath);
             if (opened) return;
 
-            if (window.MoriMainBridge?.openFile) {
-              const fileOpened = window.MoriMainBridge.openFile(rawPath);
+            if (window.MikoMainBridge?.openFile) {
+              const fileOpened = window.MikoMainBridge.openFile(rawPath);
               if (fileOpened) return;
             }
           }
@@ -609,8 +609,8 @@ export async function showModal(item, onRedownload) {
 
       modalFavBtn.onclick = (e) => {
         e.stopPropagation();
-        if (typeof window.toggleMoriFavorite === "function") {
-          const newFavState = window.toggleMoriFavorite(item.url);
+        if (typeof window.toggleMikoFavorite === "function") {
+          const newFavState = window.toggleMikoFavorite(item.url);
           updateFavUI(newFavState);
           item.favorite = newFavState;
         }

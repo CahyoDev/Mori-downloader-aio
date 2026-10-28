@@ -3,7 +3,7 @@ import { translations, getInitialLanguage } from "../i18n/index.js";
 import { Filesystem } from "../utils/index.js";
 
 export const APP_VERSION = "4.5.1";
-export const GITHUB_REPO = "coflyn/Mori";
+export const GITHUB_REPO = "coflyn/Miko";
 export const UPDATE_CHECK_URL = `https://api.github.com/repos/${GITHUB_REPO}/releases/latest`;
 export const REPO_URL = `https://github.com/${GITHUB_REPO}`;
 
@@ -241,7 +241,7 @@ export async function updateStorageInfo() {
     if (tauriInvoke) {
       try {
         const desktopSize = await tauriInvoke("tauri_get_folder_size", {
-          folder: "Mori",
+          folder: "Miko",
         });
         if (typeof desktopSize === "number") {
           totalSize = desktopSize;
@@ -251,8 +251,8 @@ export async function updateStorageInfo() {
       }
     } else if (Filesystem) {
       totalSize += await getFolderSize("", "CACHE");
-      const primary = await getFolderSize("Download/Mori", "EXTERNAL_STORAGE");
-      const legacy = await getFolderSize("Download/Mori", "EXTERNAL");
+      const primary = await getFolderSize("Download/Miko", "EXTERNAL_STORAGE");
+      const legacy = await getFolderSize("Download/Miko", "EXTERNAL");
       totalSize += Math.max(primary, legacy);
     }
 

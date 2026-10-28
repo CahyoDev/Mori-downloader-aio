@@ -268,10 +268,10 @@ if (App && typeof App.addListener === "function") {
 export function mergePendingHistorySync() {
   try {
     let raw = null;
-    if (window.MoriMainBridge?.getPendingHistoryList) {
-      raw = window.MoriMainBridge.getPendingHistoryList();
-    } else if (window.MoriShareBridge?.getPendingHistoryList) {
-      raw = window.MoriShareBridge.getPendingHistoryList();
+    if (window.MikoMainBridge?.getPendingHistoryList) {
+      raw = window.MikoMainBridge.getPendingHistoryList();
+    } else if (window.MikoShareBridge?.getPendingHistoryList) {
+      raw = window.MikoShareBridge.getPendingHistoryList();
     }
 
     if (!raw || raw === "[]") return false;
@@ -308,10 +308,10 @@ export function mergePendingHistorySync() {
 
     safeSetHistory(history.slice(0, 100));
 
-    if (window.MoriMainBridge?.clearPendingHistoryList) {
-      window.MoriMainBridge.clearPendingHistoryList();
-    } else if (window.MoriShareBridge?.clearPendingHistoryList) {
-      window.MoriShareBridge.clearPendingHistoryList();
+    if (window.MikoMainBridge?.clearPendingHistoryList) {
+      window.MikoMainBridge.clearPendingHistoryList();
+    } else if (window.MikoShareBridge?.clearPendingHistoryList) {
+      window.MikoShareBridge.clearPendingHistoryList();
     }
     return true;
   } catch (e) {

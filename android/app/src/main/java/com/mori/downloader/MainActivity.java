@@ -103,7 +103,7 @@ public class MainActivity extends BridgeActivity {
                     webView.evaluateJavascript(js, null);
                 }
             } catch (Exception e) {
-                Log.e("MoriMain", "sendFolderCallback error: " + e.getMessage());
+                Log.e("MikoMain", "sendFolderCallback error: " + e.getMessage());
             }
         });
     }
@@ -157,7 +157,7 @@ public class MainActivity extends BridgeActivity {
         }
     }
 
-    public class MoriMainBridge {
+    public class MikoMainBridge {
         @JavascriptInterface
         public String getEngineSecurityKey(String challenge) {
             try {
@@ -207,7 +207,7 @@ public class MainActivity extends BridgeActivity {
                             webView.evaluateJavascript(js, null);
                         }
                     } catch (Exception e) {
-                        Log.e("MoriMain", "httpRequestAsync callback error: " + e.getMessage());
+                        Log.e("MikoMain", "httpRequestAsync callback error: " + e.getMessage());
                     }
                 });
             });
@@ -297,7 +297,7 @@ public class MainActivity extends BridgeActivity {
                 return result.toString();
 
             } catch (Throwable e) {
-                Log.e("MoriMain", "httpRequest error: " + e.getMessage());
+                Log.e("MikoMain", "httpRequest error: " + e.getMessage());
                 String msg = e.getMessage() != null ? e.getMessage().replace("\"", "'") : e.getClass().getSimpleName();
                 return "{\"status\":0,\"data\":\"\",\"error\":\"" + msg + "\"}";
             }
@@ -362,7 +362,7 @@ public class MainActivity extends BridgeActivity {
                 if (nm == null) return;
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
                     android.app.NotificationChannel ch = new android.app.NotificationChannel(
-                            "mori_download_complete", "Mori Downloads", android.app.NotificationManager.IMPORTANCE_DEFAULT);
+                            "mori_download_complete", "Miko Downloads", android.app.NotificationManager.IMPORTANCE_DEFAULT);
                     nm.createNotificationChannel(ch);
                 }
                 androidx.core.app.NotificationCompat.Builder b = new androidx.core.app.NotificationCompat.Builder(MainActivity.this, "mori_download_complete")
@@ -384,7 +384,7 @@ public class MainActivity extends BridgeActivity {
                 if (nm == null) return;
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
                     android.app.NotificationChannel ch = new android.app.NotificationChannel(
-                            "mori_download_complete", "Mori Downloads", android.app.NotificationManager.IMPORTANCE_DEFAULT);
+                            "mori_download_complete", "Miko Downloads", android.app.NotificationManager.IMPORTANCE_DEFAULT);
                     nm.createNotificationChannel(ch);
                 }
                 androidx.core.app.NotificationCompat.Builder b = new androidx.core.app.NotificationCompat.Builder(MainActivity.this, "mori_download_complete")
@@ -443,7 +443,7 @@ public class MainActivity extends BridgeActivity {
                         new String[]{ f.getAbsolutePath() },
                         finalMime != null ? new String[]{ finalMime } : null,
                         (scannedPath, uri) -> {
-                            Log.d("MoriMainBridge", "MediaScanner indexed: " + scannedPath + " -> " + uri);
+                            Log.d("MikoMainBridge", "MediaScanner indexed: " + scannedPath + " -> " + uri);
                         }
                     );
                 }
@@ -793,7 +793,7 @@ public class MainActivity extends BridgeActivity {
                         }, 102);
                     }
                 } catch (Exception e) {
-                    Log.e("MoriMain", "requestAllFilesPermission error: " + e.getMessage());
+                    Log.e("MikoMain", "requestAllFilesPermission error: " + e.getMessage());
                 }
             });
         }
@@ -807,7 +807,7 @@ public class MainActivity extends BridgeActivity {
                     intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
                     startActivityForResult(intent, 201);
                 } catch (Exception e) {
-                    Log.e("MoriMain", "pickFolder error: " + e.getMessage());
+                    Log.e("MikoMain", "pickFolder error: " + e.getMessage());
                     sendFolderCallback(callbackId, "");
                     pendingFolderCallbackId = null;
                 }
@@ -858,7 +858,7 @@ public class MainActivity extends BridgeActivity {
 
         WebView webView = getBridge().getWebView();
         if (webView != null) {
-            webView.addJavascriptInterface(new MoriMainBridge(), "MoriMainBridge");
+            webView.addJavascriptInterface(new MikoMainBridge(), "MikoMainBridge");
             WebSettings settings = webView.getSettings();
             settings.setAllowFileAccess(true);
             settings.setAllowContentAccess(true);

@@ -1,6 +1,6 @@
-# Contributing to Mori
+# Contributing to Miko
 
-Thank you for your interest in contributing to **Mori**! Whether you want to fix bugs, add UI features, expand language translations, or improve documentation, your help is welcome.
+Thank you for your interest in contributing to **Miko**! Whether you want to fix bugs, add UI features, expand language translations, or improve documentation, your help is welcome.
 
 ---
 
@@ -24,22 +24,22 @@ Thank you for your interest in contributing to **Mori**! Whether you want to fix
 ## 🤝 Code of Conduct & Etiquette
 
 * **Be Respectful**: Treat everyone in the community with courtesy and respect.
-* **Keep it Clean**: Mori is a free, ad-free, and tracker-free application. We will strictly reject any PR that introduces telemetry, ads, trackers, or monetization schemes.
-* **Respect Copyleft**: Mori is licensed under **GPL-3.0**. All code contributions must honor this copyleft license.
+* **Keep it Clean**: Miko is a free, ad-free, and tracker-free application. We will strictly reject any PR that introduces telemetry, ads, trackers, or monetization schemes.
+* **Respect Copyleft**: Miko is licensed under **GPL-3.0**. All code contributions must honor this copyleft license.
 
 ---
 
 ## 💡 How Can I Contribute?
 
 ### 1. Reporting Bugs & Requesting Features
-* Check existing [GitHub Issues](https://github.com/coflyn/Mori/issues) before opening a new one to prevent duplicates.
-* Clearly specify your **Platform & OS version** (Android / macOS / Windows / iOS), **Mori Version**, and the **Source URL** causing the error.
+* Check existing [GitHub Issues](https://github.com/coflyn/Miko/issues) before opening a new one to prevent duplicates.
+* Clearly specify your **Platform & OS version** (Android / macOS / Windows / iOS), **Miko Version**, and the **Source URL** causing the error.
 
 ### 2. Translating & Localization (`public/js/i18n/`)
-Mori supports 9 languages (English, Indonesian, Japanese, Korean, Simplified Chinese, Arabic with RTL, Russian, Tagalog, and Hindi). If you want to refine translations or add a new locale, edit the dictionary files in `public/js/i18n/`.
+Miko supports 9 languages (English, Indonesian, Japanese, Korean, Simplified Chinese, Arabic with RTL, Russian, Tagalog, and Hindi). If you want to refine translations or add a new locale, edit the dictionary files in `public/js/i18n/`.
 
 ### 3. Frontend & UI Enhancements
-Feel free to refine the CSS design system, optimize MoriPlayer controls, enhance glassmorphism effects, or add responsive styling.
+Feel free to refine the CSS design system, optimize MikoPlayer controls, enhance glassmorphism effects, or add responsive styling.
 
 ---
 
@@ -61,8 +61,8 @@ Feel free to refine the CSS design system, optimize MoriPlayer controls, enhance
 
 1. **Clone your fork**:
    ```bash
-   git clone https://github.com/YOUR_USERNAME/Mori.git
-   cd Mori
+   git clone https://github.com/YOUR_USERNAME/Miko.git
+   cd Miko
    ```
 
 2. **Install dependencies**:
@@ -74,7 +74,7 @@ Feel free to refine the CSS design system, optimize MoriPlayer controls, enhance
 
 ### 📱 Building for Android
 
-Mori uses **CapacitorJS** paired with a native **OkHttp** bridge (`MainActivity.java`) to handle network requests and bypass WebView CORS restrictions.
+Miko uses **CapacitorJS** paired with a native **OkHttp** bridge (`MainActivity.java`) to handle network requests and bypass WebView CORS restrictions.
 
 #### Single-Command Build
 
@@ -86,7 +86,7 @@ npm run build:android
 npm run build:android:release
 ```
 
-Output location: `android/app/build/outputs/apk/release/Mori v{VERSION}.apk`
+Output location: `android/app/build/outputs/apk/release/Miko v{VERSION}.apk`
 
 #### Manual Build Steps
 
@@ -105,7 +105,7 @@ cd android
 keytool -genkey -v -keystore android/app/release.keystore -alias mori \
   -keyalg RSA -keysize 2048 -validity 10000 \
   -storepass android123 -keypass android123 \
-  -dname "CN=Mori, OU=Development, O=MoriApp, L=Unknown, ST=Unknown, C=ID"
+  -dname "CN=Miko, OU=Development, O=MikoApp, L=Unknown, ST=Unknown, C=ID"
 ```
 
 Configure `signingConfigs` in `android/app/build.gradle`:
@@ -158,12 +158,12 @@ npx cap sync ios
 
 # 2. Compile archive without code signing
 xcodebuild -workspace ios/App/App.xcworkspace -scheme App -configuration Release \
-  -sdk iphoneos -archivePath build/Mori.xcarchive archive \
+  -sdk iphoneos -archivePath build/Miko.xcarchive archive \
   CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=""
 
 # 3. Package into IPA
-mkdir -p Payload && cp -r build/Mori.xcarchive/Products/Applications/App.app Payload/
-zip -r "Mori.ipa" Payload && rm -rf Payload build
+mkdir -p Payload && cp -r build/Miko.xcarchive/Products/Applications/App.app Payload/
+zip -r "Miko.ipa" Payload && rm -rf Payload build
 ```
 
 ---
@@ -181,7 +181,7 @@ zip -r "Mori.ipa" Payload && rm -rf Payload build
 
 ## 🌐 Contributing Translations (i18n)
 
-Mori supports multiple languages out-of-the-box (`en`, `id`, `ja`, `ko`, `zh`, `ar`, `ru`, `tl`, `hi`). All language strings are modularized into individual locale files located in:
+Miko supports multiple languages out-of-the-box (`en`, `id`, `ja`, `ko`, `zh`, `ar`, `ru`, `tl`, `hi`). All language strings are modularized into individual locale files located in:
 
 ```
 public/js/i18n/
@@ -201,7 +201,7 @@ public/js/i18n/
 ### Improving an Existing Language
 1. Open the relevant file in `public/js/i18n/locales/<lang>.js`.
 2. Update the translation value for the desired key.
-3. Verify the changes by switching to that language in Mori Settings.
+3. Verify the changes by switching to that language in Miko Settings.
 
 ### Adding a New Language
 1. Create a new locale file in `public/js/i18n/locales/<new_code>.js` (e.g. `es.js` for Spanish).
@@ -214,13 +214,13 @@ public/js/i18n/
 4. Add the language name to `langNames` in `public/js/modules/settings/language.js` and the language option in `public/index.html`.
 
 > [!TIP]
-> **Safe Fallback**: If a key is not yet translated in your locale, Mori automatically falls back to English (`en`), preventing blank text or broken UI.
+> **Safe Fallback**: If a key is not yet translated in your locale, Miko automatically falls back to English (`en`), preventing blank text or broken UI.
 
 ---
 
 ## 🎨 CSS & Styling Architecture (`public/css/`)
 
-Mori's stylesheet is modularized into domain-focused files under `public/css/`:
+Miko's stylesheet is modularized into domain-focused files under `public/css/`:
 
 ```
 public/css/

@@ -46,7 +46,7 @@ async function fetchLatestRelease() {
       url: UPDATE_CHECK_URL,
       headers: {
         Accept: "application/vnd.github+json",
-        "User-Agent": "Mori-App",
+        "User-Agent": "Miko-App",
       },
     });
     data = typeof res.data === "string" ? JSON.parse(res.data) : res.data;
@@ -56,7 +56,7 @@ async function fetchLatestRelease() {
       method: "GET",
       headers: {
         Accept: "application/vnd.github+json",
-        "User-Agent": "Mori-App",
+        "User-Agent": "Miko-App",
       },
     });
     const rawData = res?.data || res?.body || res;
@@ -159,18 +159,18 @@ shareAppBtn?.addEventListener("click", async () => {
   const lang = translations[currentLang];
   if (window.Capacitor?.isNativePlatform?.() && Share) {
     await Share.share({
-      title: "Mori App",
+      title: "Miko App",
       text: lang["share-msg"],
-      url: "https://github.com/coflyn/Mori",
-      dialogTitle: "Share Mori",
+      url: "https://github.com/coflyn/Miko",
+      dialogTitle: "Share Miko",
     });
   } else {
     // Fallback for web
     if (navigator.share) {
       navigator.share({
-        title: "Mori App",
+        title: "Miko App",
         text: lang["share-msg"],
-        url: "https://github.com/coflyn/Mori",
+        url: "https://github.com/coflyn/Miko",
       });
     } else {
       showToast(t("toast-share-not-supported"));

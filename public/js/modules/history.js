@@ -28,7 +28,7 @@ export function safeSetHistory(history) {
     return true;
   } catch (quotaErr) {
     console.warn(
-      "[Mori History] LocalStorage quota exceeded, initiating progressive cleanup...",
+      "[Miko History] LocalStorage quota exceeded, initiating progressive cleanup...",
       quotaErr,
     );
 
@@ -66,7 +66,7 @@ export function safeSetHistory(history) {
       return true;
     } catch (e2) {
       console.warn(
-        "[Mori History] Tier 2 cleanup: stripping all data URLs and compacting...",
+        "[Miko History] Tier 2 cleanup: stripping all data URLs and compacting...",
         e2,
       );
       try {
@@ -108,7 +108,7 @@ export function safeSetHistory(history) {
         return true;
       } catch (e3) {
         console.error(
-          "[Mori History] Tier 3 cleanup: preserving favorites only...",
+          "[Miko History] Tier 3 cleanup: preserving favorites only...",
           e3,
         );
         try {
@@ -140,7 +140,7 @@ export function safeSetHistory(history) {
     }
   }
 }
-window.safeSetMoriHistory = safeSetHistory;
+window.safeSetMikoHistory = safeSetHistory;
 
 // History Edit Handlers
 editHistoryBtn?.addEventListener("click", () => {
@@ -273,7 +273,7 @@ export function toggleFavorite(url) {
 
   return isNowFav;
 }
-window.toggleMoriFavorite = toggleFavorite;
+window.toggleMikoFavorite = toggleFavorite;
 
 // Global Event for File Saved (Syncing UI and History)
 window.addEventListener("mori_file_saved", async (e) => {
@@ -333,16 +333,16 @@ window.addEventListener("mori_file_saved", async (e) => {
     try {
       let localThumbnail = null;
       // 1. Android Native Bridge
-      if (window.MoriMainBridge?.getVideoThumbnail) {
+      if (window.MikoMainBridge?.getVideoThumbnail) {
         try {
-          localThumbnail = window.MoriMainBridge.getVideoThumbnail(
+          localThumbnail = window.MikoMainBridge.getVideoThumbnail(
             path || fileUri,
           );
         } catch (_) {}
       }
 
-      // 2. iOS Capacitor Native Bridge (AVAssetImageGenerator via MoriSecurity)
-      const secPlugin = window.Capacitor?.Plugins?.MoriSecurity || window.MoriSecurity;
+      // 2. iOS Capacitor Native Bridge (AVAssetImageGenerator via MikoSecurity)
+      const secPlugin = window.Capacitor?.Plugins?.MikoSecurity || window.MikoSecurity;
       if (!localThumbnail && secPlugin?.getVideoThumbnail) {
         try {
           const res = await secPlugin.getVideoThumbnail({
@@ -553,7 +553,7 @@ export function autoClearOldCache() {
 
 let isRefreshingThumbnails = false;
 export function refreshAllVideoThumbnails() {
-  if (!window.MoriMainBridge?.getVideoThumbnail || isRefreshingThumbnails)
+  if (!window.MikoMainBridge?.getVideoThumbnail || isRefreshingThumbnails)
     return;
   try {
     const modalOverlay = document.getElementById("modalOverlay");
@@ -631,10 +631,10 @@ export function refreshAllVideoThumbnails() {
       if (videoPath) {
         try {
           let freshThumb = null;
-          if (window.MoriMainBridge?.getVideoThumbnail) {
-            freshThumb = window.MoriMainBridge.getVideoThumbnail(videoPath);
+          if (window.MikoMainBridge?.getVideoThumbnail) {
+            freshThumb = window.MikoMainBridge.getVideoThumbnail(videoPath);
           } else {
-            const secPlugin = window.Capacitor?.Plugins?.MoriSecurity || window.MoriSecurity;
+            const secPlugin = window.Capacitor?.Plugins?.MikoSecurity || window.MikoSecurity;
             if (secPlugin?.getVideoThumbnail) {
               const res = await secPlugin.getVideoThumbnail({ path: videoPath }).catch(() => null);
               if (res?.thumbnail) freshThumb = res.thumbnail;

@@ -23,7 +23,7 @@ public class DownloadForegroundService extends Service {
         try {
             PowerManager powerManager = (PowerManager) getSystemService(Context.POWER_SERVICE);
             if (powerManager != null) {
-                wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Mori::DownloadWakeLock");
+                wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Miko::DownloadWakeLock");
                 wakeLock.acquire(60 * 60 * 1000L); // 1 hour safety timeout
             }
         } catch (Exception e) {
@@ -36,7 +36,7 @@ public class DownloadForegroundService extends Service {
         String title = intent != null && intent.hasExtra("title") ? intent.getStringExtra("title") : "Downloading Media...";
         
         Notification notification = new NotificationCompat.Builder(this, CHANNEL_ID)
-                .setContentTitle("Mori Downloader")
+                .setContentTitle("Miko Downloader")
                 .setContentText(title)
                 .setSmallIcon(R.mipmap.ic_launcher)
                 .setPriority(NotificationCompat.PRIORITY_LOW)
@@ -74,10 +74,10 @@ public class DownloadForegroundService extends Service {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(
                     CHANNEL_ID,
-                    "Mori Background Download",
+                    "Miko Background Download",
                     NotificationManager.IMPORTANCE_DEFAULT
             );
-            channel.setDescription("Keeps Mori active during media download");
+            channel.setDescription("Keeps Miko active during media download");
             NotificationManager manager = getSystemService(NotificationManager.class);
             if (manager != null) {
                 manager.createNotificationChannel(channel);

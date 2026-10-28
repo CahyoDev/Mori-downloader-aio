@@ -7,17 +7,17 @@
 <p align="center">
   <a href="https://www.npmjs.com/package/@coflyn/mori"><img src="https://img.shields.io/npm/v/@coflyn/mori?style=flat-square&color=blue" alt="NPM Version"></a>
   <a href="https://www.npmjs.com/package/@coflyn/mori"><img src="https://img.shields.io/npm/dm/@coflyn/mori?style=flat-square&color=green" alt="NPM Downloads"></a>
-  <a href="https://github.com/coflyn/Mori"><img src="https://img.shields.io/badge/License-GPL--3.0-blue?style=flat-square" alt="License"></a>
-  <a href="https://github.com/coflyn/Mori"><img src="https://img.shields.io/badge/GitHub-coflyn%2FMori-black?style=flat-square&logo=github" alt="GitHub"></a>
+  <a href="https://github.com/coflyn/Miko"><img src="https://img.shields.io/badge/License-GPL--3.0-blue?style=flat-square" alt="License"></a>
+  <a href="https://github.com/coflyn/Miko"><img src="https://img.shields.io/badge/GitHub-coflyn%2FMiko-black?style=flat-square&logo=github" alt="GitHub"></a>
 </p>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/coflyn/Mori/main/assets/cli.webp" width="90%" alt="Mori CLI Preview">
+  <img src="https://raw.githubusercontent.com/coflyn/Miko/main/assets/cli.webp" width="90%" alt="Miko CLI Preview">
 </p>
 
 ---
 
-Command-line interface for **[Mori](https://github.com/coflyn/Mori)**. Download watermark-free videos, high-resolution photos, music, playlists, and compile albums into PDF across 16 platforms directly from your terminal.
+Command-line interface for **[Miko](https://github.com/coflyn/Miko)**. Download watermark-free videos, high-resolution photos, music, playlists, and compile albums into PDF across 16 platforms directly from your terminal.
 
 ## ⚡ Quick Start
 
@@ -79,7 +79,7 @@ USAGE:
   npx @coflyn/mori [URL] [OPTIONS]
 
 OPTIONS:
-  -o, --output <dir>   Custom download destination (default: ~/Downloads/Mori)
+  -o, --output <dir>   Custom download destination (default: ~/Downloads/Miko)
   -s, --server <1|2>   Select scraper server engine (1 = Default, 2 = Mirror)
   -a, --audio          Extract and download audio stream only (MP3/M4A)
   -p, --pdf            Compile multi-photo posts directly into a single PDF album
@@ -122,7 +122,7 @@ Inside the interactive prompt, type `/` to access built-in tools:
 | `/platforms`     | `/platform`   | List all 16 supported media platforms and categories                               |
 | `/config`        | —             | Display active configuration, storage paths, and versions                          |
 | `/update`        | `/u`          | Check for both CLI package updates (npm) and OTA scraper patches                   |
-| `/reset`         | —             | Factory reset Mori configuration, cached scrapers, and history                     |
+| `/reset`         | —             | Factory reset Miko configuration, cached scrapers, and history                     |
 | `/clear`         | `/cls`        | Clear terminal screen and reprint header                                           |
 | `/help`          | `/?`          | Display quick command reference guide                                              |
 | `/exit`          | `/quit`, `/q` | Exit interactive CLI mode                                                          |
@@ -149,5 +149,5 @@ Inside the interactive prompt, type `/` to access built-in tools:
 
 ## 📄 License
 
-Licensed under the [GNU General Public License v3.0](https://github.com/coflyn/Mori/blob/main/LICENSE).
-Part of the **[Mori](https://github.com/coflyn/Mori)** project.
+Licensed under the [GNU General Public License v3.0](https://github.com/coflyn/Miko/blob/main/LICENSE).
+Part of the **[Miko](https://github.com/coflyn/Miko)** project.

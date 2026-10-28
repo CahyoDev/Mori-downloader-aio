@@ -132,12 +132,12 @@ export async function cleanupOrphanedTempFiles() {
   const directoriesToTry = ["EXTERNAL_STORAGE", "DOCUMENTS", "EXTERNAL"];
   const normalize = (val, fallback) => {
     const raw = (val || fallback).trim().replace(/^\/+/, "");
-    if (raw === "Mori") return "Download/Mori";
-    if (raw === "Mori/Music") return "Download/Mori/Music";
+    if (raw === "Miko") return "Download/Miko";
+    if (raw === "Miko/Music") return "Download/Miko/Music";
     return raw.toLowerCase().startsWith("download") ? raw : `Download/${raw}`;
   };
-  const videoPath = normalize(localStorage.getItem("mori_download_path"), "Download/Mori");
-  const musicPath = normalize(localStorage.getItem("mori_music_path"), "Download/Mori/Music");
+  const videoPath = normalize(localStorage.getItem("mori_download_path"), "Download/Miko");
+  const musicPath = normalize(localStorage.getItem("mori_music_path"), "Download/Miko/Music");
   const platforms = [
     "",
     "/TikTok",

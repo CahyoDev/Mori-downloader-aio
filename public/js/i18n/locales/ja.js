@@ -1,6 +1,6 @@
 export default {
   "about-text":
-    "Moriは高速で多機能なメディアダウンローダーです。coflynによって愛を込めて作られました。",
+    "Mikoは高速で多機能なメディアダウンローダーです。coflynによって愛を込めて作られました。",
   "anim-fast": "速い",
   "anim-normal": "普通",
   "anim-off": "オフ",
@@ -71,7 +71,7 @@ export default {
   "desc-clearcache":
     "スペースを解放するために一時データ（サムネイルなど）のみを削除します。ダウンロードしたファイルは安全です。続行しますか？",
   "desc-wipedata":
-    "警告：これにより、履歴とMoriフォルダ内のすべてのダウンロード済みファイルが完全に削除されます。ファイルを保持したい場合は、別のフォルダに移動してください。続行しますか？",
+    "警告：これにより、履歴とMikoフォルダ内のすべてのダウンロード済みファイルが完全に削除されます。ファイルを保持したい場合は、別のフォルダに移動してください。続行しますか？",
   "dl-stats-history": "履歴数",
   "dl-stats-total": "総ダウンロード数",
   "doh-cloudflare": "Cloudflare (1.1.1.1)",
@@ -110,11 +110,11 @@ export default {
   "history-unlimited": "無制限",
   "howtouse-steps": [
     "サポートされているプラットフォームからリンクをコピーします。",
-    "Moriに戻り、貼り付けボタンをタップします。",
+    "Mikoに戻り、貼り付けボタンをタップします。",
     "分析が完了するまで待ちます。",
     "ダウンロードをタップして保存します。",
   ],
-  "label-about": "Moriについて",
+  "label-about": "Mikoについて",
   "label-anim-speed": "アニメーション速度",
   "label-animated-bg": "動く背景",
   "label-auto-analyze": "貼り付け時に自動解析",
@@ -199,7 +199,7 @@ export default {
   "label-share-file": "ファイルを共有",
   "label-share-link": "リンクを共有",
   "label-share-media": "メディアを共有",
-  "label-shareapp": "Moriをシェアする",
+  "label-shareapp": "Mikoをシェアする",
   "label-sound-pack": "完了サウンド",
   "label-speed": "速度",
   "label-storagesize": "合計メディアサイズ",
@@ -269,8 +269,8 @@ export default {
   "gallery-delete-title": "ファイルを削除",
   "gallery-delete-confirm": "このファイルを端末から完全に削除しますか？",
   "gallery-file-deleted": "ファイルを削除しました",
-  "gallery-desc": "Moriフォルダーに保存されたメディア",
-  "gallery-empty": "Moriフォルダー内にメディアがまだ見つかりません。",
+  "gallery-desc": "Mikoフォルダーに保存されたメディア",
+  "gallery-empty": "Mikoフォルダー内にメディアがまだ見つかりません。",
   "gallery-filter-all": "すべて",
   "gallery-filter-audio": "音声",
   "gallery-filter-doc": "PDF",
@@ -303,7 +303,7 @@ export default {
   "pdf-pages": "ページ",
   "pdf-toast-finalizing": "PDF構造をファイナライズ中... お待ちください。",
   "pdf-toast-processing": "${count}/${total} 枚の画像を処理中...",
-  "pdf-toast-saved": "PDFが ダウンロード/Mori に正常に保存されました",
+  "pdf-toast-saved": "PDFが ダウンロード/Miko に正常に保存されました",
   "pdf-toast-saving": "デバイスに保存中... 数秒かかる場合があります。",
   "pdf-toast-starting":
     "PDF書き出しを開始中... (大きなギャラリーは時間がかかる場合があります)",
@@ -343,9 +343,9 @@ export default {
   "share-err-no-links": "ダウンロードリンクが見つかりませんでした。",
   "share-err-unsupported": "サポートされていないプラットフォームのリンクです。",
   "share-msg":
-    "どこからでもメディアをダウンロードできる素晴らしいアプリ、Moriをチェックしてください！ https://github.com/coflyn/Mori",
+    "どこからでもメディアをダウンロードできる素晴らしいアプリ、Mikoをチェックしてください！ https://github.com/coflyn/Miko",
   "share-panel-sub": "メディアの設定とダウンロード",
-  "share-panel-title": "Mori クイック保存",
+  "share-panel-title": "Miko クイック保存",
   "sound-chime": "モダンチャイム",
   "sound-droplet": "水滴",
   "sound-pop": "ソフトポップ",

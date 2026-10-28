@@ -1,6 +1,6 @@
 {
   "appId": "com.mori.downloader",
-  "appName": "Mori",
+  "appName": "Miko",
   "webDir": "public",
   "plugins": {
     "CapacitorHttp": {

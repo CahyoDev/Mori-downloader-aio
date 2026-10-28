@@ -7,7 +7,7 @@ import {
 import { translations } from "../i18n/index.js";
 
 /**
- * Creates a custom video player element with all MoriPlayer controls.
+ * Creates a custom video player element with all MikoPlayer controls.
  * @param {Object} dl - Download item with url, type, thumbnail properties.
  * @param {number} index - Slide index (0-based).
  * @param {string} resultThumbnail - Fallback thumbnail URL.
@@ -593,8 +593,8 @@ export function createVideoPlayer(dl, index, resultThumbnail) {
           fbImg.style.cursor = "pointer";
           const openTarget = () => {
             const targetPath = dl.rawPath || dl.rawUri || videoUrl;
-            if (window.MoriMainBridge?.openFile) {
-              window.MoriMainBridge.openFile(targetPath);
+            if (window.MikoMainBridge?.openFile) {
+              window.MikoMainBridge.openFile(targetPath);
             }
           };
           fbImg.onclick = openTarget;

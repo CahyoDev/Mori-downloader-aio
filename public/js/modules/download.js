@@ -365,7 +365,7 @@ downloadBtn.addEventListener("click", async () => {
                         itemTitle
                           .replace(/[\\/:*?"<>|#%&{}\[\]@$^+=~`';,]/g, "")
                           .trim()
-                          .substring(0, 60) || "Mori_Batch_Album";
+                          .substring(0, 60) || "Miko_Batch_Album";
                       const pdfFileName = `${sanitizedTitle}.pdf`;
                       if (
                         window.Capacitor?.isNativePlatform?.() &&
@@ -378,13 +378,13 @@ downloadBtn.addEventListener("click", async () => {
                           ),
                         );
                         await Filesystem.writeFile({
-                          path: `Download/Mori/${pdfFileName}`,
+                          path: `Download/Miko/${pdfFileName}`,
                           directory: "EXTERNAL_STORAGE",
                           data: base64Pdf,
                           recursive: true,
                         }).catch(() =>
                           Filesystem.writeFile({
-                            path: `Download/Mori/${pdfFileName}`,
+                            path: `Download/Miko/${pdfFileName}`,
                             directory: "DOCUMENTS",
                             data: base64Pdf,
                             recursive: true,

@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to the Mori CLI (`@coflyn/mori`) will be documented in this file.
+All notable changes to the Miko CLI (`@coflyn/mori`) will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
@@ -23,18 +23,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Upgraded `/delete` to an interactive multiselect list allowing users to toggle multiple items with `Space` and confirm with `Enter`, with dual deletion modes: delete from disk & history or remove from history only.
 - **Engine Rollback & Version Selector (`/rollback`)**:
   - Rollback or install specific versions of scraper engines if an update introduces upstream breaking changes.
-  - **Mori Core Engine**: Browse and install previous bundles directly via GitHub commit history.
+  - **Miko Core Engine**: Browse and install previous bundles directly via GitHub commit history.
   - **Scrapr Engine**: Browse and install previous releases directly from the NPM registry.
   - Accessible via `/rollback` or `/engine` management menu.
 
 ### Fixed
-- **Facebook SnapSave Extraction**: Fixed `(0, j.decodeSnapSave) is not a function` error when extracting Facebook media by defining `decodeSnapSave` and `extractFinalUrl` in engine runtime dependencies ([#18](https://github.com/coflyn/Mori/issues/18)).
+- **Facebook SnapSave Extraction**: Fixed `(0, j.decodeSnapSave) is not a function` error when extracting Facebook media by defining `decodeSnapSave` and `extractFinalUrl` in engine runtime dependencies ([#18](https://github.com/coflyn/Miko/issues/18)).
 
 ## [1.1.0] - 2026-10-21
 
 ### Added
-- **First-Run Engine Setup Wizard**: Interactive prompt on fresh install (`mori`) to choose scraper engine setup: Both (Mori Core + Scrapr), Scrapr Engine only, or Mori Engine only.
-- **On-Demand Engine Architecture**: Downloads engines directly into `~/.mori/` via OTA hot-patching, keeping the Mori CLI npm package lightweight (~30 KB).
+- **First-Run Engine Setup Wizard**: Interactive prompt on fresh install (`mori`) to choose scraper engine setup: Both (Miko Core + Scrapr), Scrapr Engine only, or Miko Engine only.
+- **On-Demand Engine Architecture**: Downloads engines directly into `~/.mori/` via OTA hot-patching, keeping the Miko CLI npm package lightweight (~30 KB).
 - **Interactive Engine Management (`/engine`)**: Easily install missing engines, re-download bundles, or uninstall engines directly from the CLI.
 - **Enhanced Stream Resolution Labels**: Standardized stream formatting with explicit resolutions (`1080p Video`, `720p Video`, `MP3 Audio`).
 - **Dynamic Startup Banner**: Displays real-time engine installation and version badges (`mori v...`, `scrapr v...`, or `no engine installed`).
@@ -54,7 +54,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.0.0] - 2026-10-16
 
 ### Added
-- **Initial Release** of Mori CLI (`@coflyn/mori`).
+- **Initial Release** of Miko CLI (`@coflyn/mori`).
 - **16 Supported Platforms**: Universal extraction for TikTok, Instagram, YouTube, Douyin, Pinterest, RedNote (Xiaohongshu), Spotify, Pixiv, Twitter/X, Reddit, Threads, Bilibili, Facebook, Apple Music, Bandcamp, and TeraBox.
 - **Dual Operating Modes**:
   - Direct execution with command-line arguments: `mori <url> [options]`.

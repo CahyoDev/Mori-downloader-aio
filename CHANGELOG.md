@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to **Mori** will be documented in this file.
+All notable changes to **Miko** will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
@@ -35,14 +35,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Enabled R8 full minification and resource shrinking in Android `build.gradle` with tuned ProGuard rules for a leaner APK footprint.
   - Configured Tauri release profile in `Cargo.toml` (`opt-level = "z"`, LTO, symbol stripping, `codegen-units = 1`) to reduce desktop binary sizes and optimize runtime performance.
 - **Asset Updates**:
-  - Converted all screenshot previews to high-resolution WebP and added Mori CLI mockup to documentation.
+  - Converted all screenshot previews to high-resolution WebP and added Miko CLI mockup to documentation.
 
 ## [4.5.0] - 2026-10-15
 
 ### Added
 
 - **Local Media Gallery Module (`gallery.js`)**:
-  - Scans downloaded media across Mori directories (`Download/Mori`, `Music/Mori`, `Pictures/Mori`, `Documents/Mori`).
+  - Scans downloaded media across Miko directories (`Download/Miko`, `Music/Miko`, `Pictures/Miko`, `Documents/Miko`).
   - Categorizes media into Video (MP4, MKV, MOV, WebM), Audio (MP3, M4A, AAC, Opus, FLAC, WAV), Image (JPG, PNG, WebP, GIF), and PDF documents with filter chips and real-time item counts.
   - Sorting engine supporting Newest, Oldest, Name A-Z, Largest, and Smallest with persistent preference storage (`mori_gallery_sort`).
   - Dedicated Gallery tab on bottom navigation bar with responsive grid layout and custom glassmorphic sort dropdown.
@@ -75,7 +75,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Reduced cold start and app resume paste delay to 300ms for instant clipboard link detection.
   - Added native `paste` event listener on URL input: pasting via keyboard (Ctrl+V / Cmd+V) or mobile context menu immediately triggers analysis when auto-analyze is enabled.
 - **Privacy & Security Integration**:
-  - Integrated Gallery page with Mori Privacy Lock system, requiring PIN or biometric authentication if enabled.
+  - Integrated Gallery page with Miko Privacy Lock system, requiring PIN or biometric authentication if enabled.
   - Auto-locks gallery on app pause/minimize via session state tracking.
 
 ### Changed
@@ -120,7 +120,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **History Card Thumbnails**: Fixed broken thumbnail icons on History cards for downloaded multi-photo sets via Capacitor URI mapping.
 - **Offline History Playback**: Enforced strictly offline media playback, suppressing remote network fallback and remote poster requests when viewing downloaded items.
 - **False Missing File Status**: Guarded `showMissingStatus()` in result modals to prevent false missing warnings on un-downloaded items.
-- **Nested Directory Prefix**: Resolved duplicate directory prefixes (`Download/Download/Mori` -> `Download/Mori`) in PDF export and temp file cleanup.
+- **Nested Directory Prefix**: Resolved duplicate directory prefixes (`Download/Download/Miko` -> `Download/Miko`) in PDF export and temp file cleanup.
 
 ---
 
@@ -199,7 +199,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Playlist & Batch Downloads**: Fixed progress toast desync and race conditions during multi-item downloads.
 - **Filename Sanitization**: Resolved Android `EACCES`/`ENOENT` file path errors caused by special Unicode characters or oversized post titles.
-- **iOS Local Media**: Resolved WKWebView local media file URI playback in MoriPlayer.
+- **iOS Local Media**: Resolved WKWebView local media file URI playback in MikoPlayer.
 - **Scrapers**: Fixed YouTube Shorts extraction and Facebook audio streaming.
 - **Twitter & Spotify**: Fixed video download streams and improved media gallery indexing.
 - **Desktop (Tauri)**: Fixed crash on rapid sequential downloads and corrected Unicode preview rendering.
@@ -292,7 +292,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Desktop Support (macOS & Windows)**: Powered by Tauri with native Rust binary helpers (`tauri_fetch_bytes`, `tauri_save_bytes_file`).
 - **External URL Handling**: Native browser opener (`tauri_open_url`) for documentation, bug reports, and GitHub repository links in default browsers.
 - **Smart Update Checker**: Semver version comparison (`isNewerVersion`) preventing redundant update prompts when app is up-to-date.
-- **Desktop PDF Gallery Export**: Direct export of scraped photo sets into `~/Downloads/Mori`.
+- **Desktop PDF Gallery Export**: Direct export of scraped photo sets into `~/Downloads/Miko`.
 - **Standardized Filename Templates**: Streamlined filename options ("Title Only" set as default).
 
 ### Fixed
@@ -524,7 +524,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Fixed redundant toast notifications on Android 13+.
 - Filtered external logos and site assets from Instagram thumbnail previews.
-- Unified all export paths into `Download/Mori`.
+- Unified all export paths into `Download/Miko`.
 
 ---
 
@@ -532,7 +532,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **MoriPlayer**: Custom-built media player engine with double-tap seeking and smart gesture controls.
+- **MikoPlayer**: Custom-built media player engine with double-tap seeking and smart gesture controls.
 - **Native Gesture Navigation**: Fluid swipe gestures to switch between Home, History, and Settings.
 - **Music UI**: Vertical stacking layout with thumbnail display in History modal.
 - **Interactive Tactility**: Interactive shadow animations on supported platform chips.

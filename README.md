@@ -1,16 +1,16 @@
 <p align="center">
-  <img src="assets/icon.png" width="128" alt="Mori Logo">
+  <img src="assets/icon.png" width="128" alt="Miko Logo">
 </p>
 
-<h1 align="center">Mori</h1>
+<h1 align="center">Miko</h1>
 <p align="center"><em><strong>Save anything, From anywhere.</strong></em></p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/Version-v4.5.1-brown?style=flat-square" alt="Version">
   <a href="https://www.npmjs.com/package/@coflyn/mori"><img src="https://img.shields.io/npm/v/@coflyn/mori?style=flat-square&color=CB3837&logo=npm&logoColor=white" alt="NPM Version"></a>
-  <img src="https://img.shields.io/github/downloads/coflyn/Mori/total?style=flat-square&color=blue" alt="Downloads">
-  <img src="https://img.shields.io/github/stars/coflyn/Mori?style=flat-square&color=gold" alt="Stars">
-  <img src="https://img.shields.io/github/repo-size/coflyn/Mori?style=flat-square&color=purple" alt="Repo Size">
+  <img src="https://img.shields.io/github/downloads/coflyn/Miko/total?style=flat-square&color=blue" alt="Downloads">
+  <img src="https://img.shields.io/github/stars/coflyn/Miko?style=flat-square&color=gold" alt="Stars">
+  <img src="https://img.shields.io/github/repo-size/coflyn/Miko?style=flat-square&color=purple" alt="Repo Size">
   <img src="https://img.shields.io/badge/License-GPL--3.0-blue?style=flat-square" alt="License">
   <img src="https://img.shields.io/badge/Platform-Android%20%7C%20iOS%20%7C%20CLI-3DDC84?style=flat-square&logo=android&logoColor=white" alt="Platform">
 </p>
@@ -44,7 +44,7 @@ Save and download videos, photos, and music from 16 platforms. No watermarks. No
 
 1. [How to Use](#-how-to-use)
 2. [Download & Installation](#-download--installation)
-3. [Mori CLI (Terminal)](#-mori-cli-terminal)
+3. [Miko CLI (Terminal)](#-mori-cli-terminal)
 4. [Features](#-features)
 5. [Supported Platforms & Scraper Engines](#-supported-platforms--scraper-engines)
 6. [For Developers & Building from Source](#-for-developers--building-from-source)
@@ -57,41 +57,41 @@ Save and download videos, photos, and music from 16 platforms. No watermarks. No
 
 ## 🚀 How to Use
 
-Saving media with Mori takes only three simple steps:
+Saving media with Miko takes only three simple steps:
 
 1. **Copy Link**: Copy any video, photo, or music link from your favorite app (TikTok, Instagram, YouTube, Spotify, etc.).
-2. **Open Mori**: Mori automatically detects the link from your clipboard and analyzes it right away. _(On Android, you can also just tap **Share** on any post and choose **Mori** to download directly without leaving the app!)_
+2. **Open Miko**: Miko automatically detects the link from your clipboard and analyzes it right away. _(On Android, you can also just tap **Share** on any post and choose **Miko** to download directly without leaving the app!)_
 3. **Download**: Pick your preferred quality (HD video without watermarks, audio MP3, or photo gallery) and tap **Download**. Your media is saved straight to your device's gallery or music folder.
 
 ## 📥 Download & Installation
 
-Pre-compiled, ready-to-use packages are available for all devices on **[GitHub Releases](https://github.com/coflyn/Mori/releases)** and **[npm](https://www.npmjs.com/package/@coflyn/mori)**.
+Pre-compiled, ready-to-use packages are available for all devices on **[GitHub Releases](https://github.com/coflyn/Miko/releases)** and **[npm](https://www.npmjs.com/package/@coflyn/mori)**.
 
 | Platform                                                                                                                        | Available Packages                                                | Installation Guide                                                                  |
 | :------------------------------------------------------------------------------------------------------------------------------ | :---------------------------------------------------------------- | :---------------------------------------------------------------------------------- |
-| <img src="https://cdn.simpleicons.org/android/3DDC84" width="16" /> **Android**                                                 | `Mori v...apk`                                                    | [Installation & Play Protect Guide](GUIDE.md#android-installation--troubleshooting) |
-| <img src="https://cdn.simpleicons.org/apple/000000" width="16" /> **iOS**                                                       | `Mori v...ipa`                                                    | [AltStore / TrollStore Sideloading](GUIDE.md#ios-sideloading-guide)                 |
-| <img src="https://cdn.simpleicons.org/npm/CB3837" width="16" /> **CLI (Desktop & Server)**                                       | `npx @coflyn/mori`<br>`npm install -g @coflyn/mori`               | [Mori CLI Guide](#-mori-cli-terminal)                                               |
+| <img src="https://cdn.simpleicons.org/android/3DDC84" width="16" /> **Android**                                                 | `Miko v...apk`                                                    | [Installation & Play Protect Guide](GUIDE.md#android-installation--troubleshooting) |
+| <img src="https://cdn.simpleicons.org/apple/000000" width="16" /> **iOS**                                                       | `Miko v...ipa`                                                    | [AltStore / TrollStore Sideloading](GUIDE.md#ios-sideloading-guide)                 |
+| <img src="https://cdn.simpleicons.org/npm/CB3837" width="16" /> **CLI (Desktop & Server)**                                       | `npx @coflyn/mori`<br>`npm install -g @coflyn/mori`               | [Miko CLI Guide](#-mori-cli-terminal)                                               |
 
 > 📖 **Need help installing or troubleshooting?**  
 > Read the complete **[Installation, Sideloading & User Guide (GUIDE.md)](GUIDE.md)**.
 
 > 💡 **Why Desktop GUI Deleted?**  
-> Desktop GUI builds (`.dmg`, `.exe`, `.msi`) previously built with Tauri have been retired and consolidated into the standalone **Mori CLI** (`@coflyn/mori`).  
+> Desktop GUI builds (`.dmg`, `.exe`, `.msi`) previously built with Tauri have been retired and consolidated into the standalone **Miko CLI** (`@coflyn/mori`).  
 >
-> - **Direct Execution via NPX**: Rather than downloading standalone installers and manually updating them, desktop users across macOS, Windows, and Linux can run Mori immediately on demand through `npx @coflyn/mori` or install it globally via `npm install -g @coflyn/mori`.
-> - **No Gatekeeper & SmartScreen Blocks**: Uncertified desktop binaries frequently trigger false-positive security warnings on desktop operating systems—such as macOS Gatekeeper's *"Mori is damaged and can't be opened"* quarantine and Windows SmartScreen alerts. Shifting to an npm-distributed CLI completely bypasses these operating system hurdles without requiring users to run manual terminal bypass commands (`xattr -cr`).
+> - **Direct Execution via NPX**: Rather than downloading standalone installers and manually updating them, desktop users across macOS, Windows, and Linux can run Miko immediately on demand through `npx @coflyn/mori` or install it globally via `npm install -g @coflyn/mori`.
+> - **No Gatekeeper & SmartScreen Blocks**: Uncertified desktop binaries frequently trigger false-positive security warnings on desktop operating systems—such as macOS Gatekeeper's *"Miko is damaged and can't be opened"* quarantine and Windows SmartScreen alerts. Shifting to an npm-distributed CLI completely bypasses these operating system hurdles without requiring users to run manual terminal bypass commands (`xattr -cr`).
 > - **Focus on Mobile & Scraper Reliability**: Supporting four operating systems at once created unnecessary friction. Maintaining separate Rust toolchains and chasing desktop-specific GUI bugs took valuable time away from the core project. Retiring the desktop GUI allows development to focus entirely on polishing the mobile experience (Android & iOS) and keeping all 16 scraper engines fast and reliable.
 > - **Full Feature Parity**: The CLI is not a reduced version. It retains full access to all 16 supported platforms, dual-engine scrapers, interactive REPL navigation, audio extraction, PDF compilation, and concurrent parallel downloads.
 
 ---
 
-## 💻 Mori CLI (Terminal)
+## 💻 Miko CLI (Terminal)
 
-Prefer the command line? Mori is also available as a standalone terminal CLI powered by `@clack/prompts`:
+Prefer the command line? Miko is also available as a standalone terminal CLI powered by `@clack/prompts`:
 
 <p align="center">
-  <img src="assets/cli.webp" width="85%" alt="Mori CLI Preview">
+  <img src="assets/cli.webp" width="85%" alt="Miko CLI Preview">
 </p>
 
 ```bash
@@ -125,19 +125,19 @@ Key CLI capabilities:
 ## 📜 Features
 
 - **16 Platforms in One App**: Save watermark-free videos, high-resolution photos, and audio from TikTok, Instagram, YouTube, Twitter/X, Spotify, Apple Music, Pinterest, Facebook, Threads, Bandcamp, Pixiv, Bilibili, Douyin, RedNote, Reddit, and TeraBox.
-- **Over-The-Air (OTA) Scraper Hot-Patching**: Never wait for app updates when a platform changes its API. Mori seamlessly hot-patches scraper engines in the background without needing to reinstall the app.
+- **Over-The-Air (OTA) Scraper Hot-Patching**: Never wait for app updates when a platform changes its API. Miko seamlessly hot-patches scraper engines in the background without needing to reinstall the app.
 - **Custom Directory & Storage Freedom**: Pick any folder across your device storage (including SD cards, Movies, Downloads, and custom folders) with native folder pickers and full file management support.
 - **One-Tap Playlists & Albums**: Download full music albums or playlists from **Spotify**, **Apple Music**, and **YouTube** in one click instead of saving songs one by one.
 - **High-Speed Concurrent Downloads**: Download music albums, playlists, and multi-photo galleries in parallel with up to 5 concurrent worker threads for blazing fast speeds.
 - **Floating Download Bubble & Manager**: Non-intrusive monochrome floating bubble tracking active tasks in real-time with an aggregated progress ring, expandable dropup tray, individual task progress bars, and instant cancellation.
-- **Quick Save via Android Share Menu**: Spot a video you love? Tap **Share** in any app and select Mori to download it instantly in a neat overlay without switching apps.
-- **Multi-Link Batch Mode**: Paste several links at once and let Mori queue and download them all automatically in the background.
+- **Quick Save via Android Share Menu**: Spot a video you love? Tap **Share** in any app and select Miko to download it instantly in a neat overlay without switching apps.
+- **Multi-Link Batch Mode**: Paste several links at once and let Miko queue and download them all automatically in the background.
 - **Built-in Custom Fullscreen Player & Preview**: Play videos, stream tracks, and browse photo carousels right inside the app with a sleek custom fullscreen player, real-time title bar, smooth seek scrubbing, double-tap seek, and mute controls.
 - **Integrated Media Gallery**: Browse and play all saved videos, music, photos, and PDF documents directly within the app, complete with media filter chips, real-time search, sorting options, and an in-app viewer.
 - **Instant Photo-to-PDF**: Combine photo galleries or multi-image posts into a single, clean PDF file for offline reading or sharing.
 - **PIN & Biometric Lock**: Protect your download history, media gallery, and settings with an optional 4-digit PIN code or fingerprint / Face ID lock.
-- **Clean Folder Organization**: Files are neatly organized in standard system folders (`Movies/Mori`, `Music/Mori`, `Pictures/Mori`) for easy access in your gallery.
-- **Automatic Clipboard Detection**: Opening Mori automatically suggests your copied link for instant one-tap downloading.
+- **Clean Folder Organization**: Files are neatly organized in standard system folders (`Movies/Miko`, `Music/Miko`, `Pictures/Miko`) for easy access in your gallery.
+- **Automatic Clipboard Detection**: Opening Miko automatically suggests your copied link for instant one-tap downloading.
 - **Background Downloads**: Large videos and playlists keep downloading seamlessly even when you minimize the app or turn off the screen.
 - **Anti-Corrupt File Protection**: Files are saved securely—media only appears in your gallery once 100% complete, preventing broken or unplayable files.
 - **Modern Themes & Live Backgrounds**: Choose from elegant dark modes and interactive animated backgrounds (Stars, Waves, Fireflies).
@@ -187,7 +187,7 @@ Interested in customizing the interface, contributing translations, or compiling
 ### Project Structure
 
 ```
-Mori/
+Miko/
 ├── android/                    # Capacitor Android native project
 │   ├── app/src/main/
 │   │   ├── java/com/mori/downloader/
@@ -294,25 +294,25 @@ Mori/
 
 ## 🔧 Scraper Architecture
 
-Mori's scraper core is bundled via esbuild into `public/js/scrapers/bundle.js` — a plain minified IIFE containing all 16 platform scrapers.
+Miko's scraper core is bundled via esbuild into `public/js/scrapers/bundle.js` — a plain minified IIFE containing all 16 platform scrapers.
 
-- **OTA Hot-Patching**: When a platform changes its API, Mori can silently download and apply an updated `bundle.js` from GitHub without requiring a full app update.
+- **OTA Hot-Patching**: When a platform changes its API, Miko can silently download and apply an updated `bundle.js` from GitHub without requiring a full app update.
 - **Open Client Architecture**: The entire frontend, UI design system, and core app logic remain **100% open source under GPL-3.0**.
 - **Collaborative Development**: Honest developers who want to improve scrapers or fix broken endpoints are always welcome to coordinate through [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## ⚖️ Disclaimer
 
-- **Personal & Educational Use Only**: Mori is an open-source educational utility designed solely for personal media archiving and research. Users are solely responsible for complying with local copyright laws and the terms of service of source platforms.
-- **Zero Media Hosting**: Mori does not host, stream, cache, or redistribute any media on external servers. All operations execute strictly on-demand directly on the user's local device.
-- **Respect for Third-Party Providers**: Mori acts purely as a client-side wrapper querying publicly available web endpoints. If you are an operator or developer of an upstream service and wish to have your endpoint excluded or removed from Mori, please reach out via GitHub Issues or email (riazrepo@gmail.com), and we will promptly accommodate your request.
+- **Personal & Educational Use Only**: Miko is an open-source educational utility designed solely for personal media archiving and research. Users are solely responsible for complying with local copyright laws and the terms of service of source platforms.
+- **Zero Media Hosting**: Miko does not host, stream, cache, or redistribute any media on external servers. All operations execute strictly on-demand directly on the user's local device.
+- **Respect for Third-Party Providers**: Miko acts purely as a client-side wrapper querying publicly available web endpoints. If you are an operator or developer of an upstream service and wish to have your endpoint excluded or removed from Miko, please reach out via GitHub Issues or email (riazrepo@gmail.com), and we will promptly accommodate your request.
 
 ## 📄 License & Terms of Use
 
-Mori is free and open-source software licensed under the **[GNU General Public License v3.0 (GPL-3.0)](LICENSE)**.
+Miko is free and open-source software licensed under the **[GNU General Public License v3.0 (GPL-3.0)](LICENSE)**.
 
 - **Copyleft Enforcement**: Anyone who modifies or distributes copies of this software is strictly required to provide the complete corresponding source code under the same GPL-3.0 license.
-- **No Unauthorized Commercial Re-selling**: Packaging, rebranding, or distributing closed-source, paid, or monetized variants of Mori without honoring GPL-3.0 requirements violates copyright law and will be subject to official DMCA takedowns.
-- **Trademark & Identity**: The name "Mori", app logo, and associated visual designs are the property of the original author. Derivative works must be clearly distinguished and must not claim affiliation with the original project.
+- **No Unauthorized Commercial Re-selling**: Packaging, rebranding, or distributing closed-source, paid, or monetized variants of Miko without honoring GPL-3.0 requirements violates copyright law and will be subject to official DMCA takedowns.
+- **Trademark & Identity**: The name "Miko", app logo, and associated visual designs are the property of the original author. Derivative works must be clearly distinguished and must not claim affiliation with the original project.
 
 ---
 

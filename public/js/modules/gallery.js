@@ -107,12 +107,12 @@ export function getGalleryScanFolders() {
       if (trimmed && !folders.includes(trimmed)) folders.push(trimmed);
     }
   };
-  add(localStorage.getItem("mori_download_path") || "Download/Mori");
+  add(localStorage.getItem("mori_download_path") || "Download/Miko");
   add(localStorage.getItem("mori_video_path"));
-  add(localStorage.getItem("mori_music_path") || "Music/Mori");
-  add("Download/Mori/Music");
-  add(localStorage.getItem("mori_photo_path") || "Pictures/Mori");
-  add(localStorage.getItem("mori_pdf_path") || "Documents/Mori");
+  add(localStorage.getItem("mori_music_path") || "Music/Miko");
+  add("Download/Miko/Music");
+  add(localStorage.getItem("mori_photo_path") || "Pictures/Miko");
+  add(localStorage.getItem("mori_pdf_path") || "Documents/Miko");
   return folders;
 }
 
@@ -493,16 +493,16 @@ export async function deleteGalleryItem(item) {
   let deleted = false;
 
   // 1. Android Native Bridge
-  if (window.MoriMainBridge?.deleteFile) {
+  if (window.MikoMainBridge?.deleteFile) {
     try {
-      deleted = window.MoriMainBridge.deleteFile(item.path);
+      deleted = window.MikoMainBridge.deleteFile(item.path);
       if (!deleted && !item.path?.startsWith("/")) {
-        deleted = window.MoriMainBridge.deleteFile(
+        deleted = window.MikoMainBridge.deleteFile(
           "/storage/emulated/0/" + (item.path || "").replace(/^\/+/, ""),
         );
       }
     } catch (e) {
-      console.warn("MoriMainBridge.deleteFile failed:", e);
+      console.warn("MikoMainBridge.deleteFile failed:", e);
     }
   }
 
@@ -729,7 +729,7 @@ function loadVideoThumbnailAsync(item, img) {
     return;
   }
 
-  // 2. High priority: Mori download history cache (instant synchronous cover)
+  // 2. High priority: Miko download history cache (instant synchronous cover)
   const fromHist = getThumbFromHistory(item);
   if (fromHist) {
     persistThumb(item.path, fromHist);
@@ -741,18 +741,18 @@ function loadVideoThumbnailAsync(item, img) {
   enqueueThumbTask(async (onDone) => {
     try {
       let thumb = null;
-      if (window.MoriMainBridge?.getVideoThumbnail) {
+      if (window.MikoMainBridge?.getVideoThumbnail) {
         try {
-          thumb = window.MoriMainBridge.getVideoThumbnail(item.path);
+          thumb = window.MikoMainBridge.getVideoThumbnail(item.path);
           if (!thumb && !item.path?.startsWith("/")) {
-            thumb = window.MoriMainBridge.getVideoThumbnail(
+            thumb = window.MikoMainBridge.getVideoThumbnail(
               "/storage/emulated/0/" + (item.path || "").replace(/^\/+/, ""),
             );
           }
         } catch (_) {}
-      } else if (window.Capacitor?.Plugins?.MoriSecurity?.getVideoThumbnail) {
+      } else if (window.Capacitor?.Plugins?.MikoSecurity?.getVideoThumbnail) {
         try {
-          const res = await window.Capacitor.Plugins.MoriSecurity.getVideoThumbnail({
+          const res = await window.Capacitor.Plugins.MikoSecurity.getVideoThumbnail({
             path: item.path,
           }).catch(() => null);
           if (res?.thumbnail) thumb = res.thumbnail;
@@ -1316,9 +1316,9 @@ export function renderGalleryToolbar() {
 function openFileExternal(item) {
   const rawPath = item.path || "";
   // 1. Android Native Bridge
-  if (window.MoriMainBridge?.openFile) {
+  if (window.MikoMainBridge?.openFile) {
     try {
-      if (window.MoriMainBridge.openFile(rawPath)) return;
+      if (window.MikoMainBridge.openFile(rawPath)) return;
     } catch (_) {}
   }
   // 2. Desktop Tauri

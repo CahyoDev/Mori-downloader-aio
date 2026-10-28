@@ -62,9 +62,9 @@ export async function handlePostDownload({
     }),
   );
 
-  if (window.MoriMainBridge?.scanMediaFile) {
+  if (window.MikoMainBridge?.scanMediaFile) {
     try {
-      window.MoriMainBridge.scanMediaFile(savedFile.path || savedUri);
+      window.MikoMainBridge.scanMediaFile(savedFile.path || savedUri);
     } catch (_) {}
   }
 
@@ -72,10 +72,10 @@ export async function handlePostDownload({
 
   if (
     !window._moriPlaylistDownloading &&
-    window.MoriMainBridge?.showCompleteNotification
+    window.MikoMainBridge?.showCompleteNotification
   ) {
     try {
-      window.MoriMainBridge.showCompleteNotification(
+      window.MikoMainBridge.showCompleteNotification(
         effectiveTitle,
         `${displayFolder}/${fileName}`,
       );

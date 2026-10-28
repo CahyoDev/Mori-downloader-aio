@@ -54,7 +54,7 @@ android {
     }
     applicationVariants.all { variant ->
         variant.outputs.all {
-            outputFileName = "Mori v${variant.versionName}.apk"
+            outputFileName = "Miko v${variant.versionName}.apk"
         }
     }
 }

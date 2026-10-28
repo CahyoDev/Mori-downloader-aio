@@ -2,12 +2,12 @@
 import { platformVal } from "../core.js";
 
 /**
- * Synchronizes a single Mori setting to Android SharedPreferences for background & share activities
+ * Synchronizes a single Miko setting to Android SharedPreferences for background & share activities
  */
 export function syncSettingToNative(key, val) {
-  if (window.MoriMainBridge?.saveSetting) {
+  if (window.MikoMainBridge?.saveSetting) {
     try {
-      window.MoriMainBridge.saveSetting(key, String(val));
+      window.MikoMainBridge.saveSetting(key, String(val));
     } catch (e) {
       console.error("syncSettingToNative error", e);
     }

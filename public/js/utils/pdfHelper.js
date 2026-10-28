@@ -20,7 +20,7 @@ export async function ensurePdfLib() {
 }
 
 /**
- * Converts an array of image URLs into a PDF Uint8Array using pdf-lib (already included in Mori).
+ * Converts an array of image URLs into a PDF Uint8Array using pdf-lib (already included in Miko).
  * @param {string[]} imageUrls - Array of image URLs to combine into PDF.
  * @returns {Promise<Uint8Array>} Raw PDF binary Uint8Array
  */

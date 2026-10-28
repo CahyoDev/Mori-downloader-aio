@@ -208,8 +208,8 @@ export function renderHistory(onItemClick, onDeleteClick) {
       favBtn.addEventListener("click", (e) => {
         e.stopPropagation();
         e.preventDefault();
-        if (typeof window.toggleMoriFavorite === "function") {
-          window.toggleMoriFavorite(item.url);
+        if (typeof window.toggleMikoFavorite === "function") {
+          window.toggleMikoFavorite(item.url);
         }
       });
     }

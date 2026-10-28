@@ -58,7 +58,7 @@ public class ShareActivity extends AppCompatActivity {
         } catch (Throwable ignored) {}
     }
 
-    private static final String TAG = "MoriShare";
+    private static final String TAG = "MikoShare";
     private static final String CHANNEL_ID = "mori_download";
     private static final int NOTIF_ID_BASE = 4000;
 
@@ -145,9 +145,9 @@ public class ShareActivity extends AppCompatActivity {
         settings.setMediaPlaybackRequiresUserGesture(false);
 
         // Expose JavascriptInterface
-        MoriShareBridge shareBridge = new MoriShareBridge();
-        webView.addJavascriptInterface(shareBridge, "MoriShareBridge");
-        webView.addJavascriptInterface(shareBridge, "MoriMainBridge");
+        MikoShareBridge shareBridge = new MikoShareBridge();
+        webView.addJavascriptInterface(shareBridge, "MikoShareBridge");
+        webView.addJavascriptInterface(shareBridge, "MikoMainBridge");
 
         webView.setWebViewClient(new WebViewClient() {
             @Override
@@ -186,7 +186,7 @@ public class ShareActivity extends AppCompatActivity {
         String theme = prefs.getString("mori_theme", "dark");
         String font = prefs.getString("mori_font", "display");
         String preferServer = prefs.getString("mori_prefer_server", "ask");
-        String downloadPath = prefs.getString("mori_download_path", "Mori");
+        String downloadPath = prefs.getString("mori_download_path", "Miko");
         String autoFolder = prefs.getString("mori_auto_folder", "true");
         String filenameTemplate = prefs.getString("mori_filename", "title");
 
@@ -205,15 +205,15 @@ public class ShareActivity extends AppCompatActivity {
                 "  localStorage.setItem('mori_auto_folder', '" + autoFolder + "');" +
                 "  localStorage.setItem('mori_filename', '" + filenameTemplate + "');" +
                 "} catch(e) {};" +
-                "if (typeof window.onMoriConfigReady === 'function') window.onMoriConfigReady();";
+                "if (typeof window.onMikoConfigReady === 'function') window.onMikoConfigReady();";
         webView.evaluateJavascript(js, null);
     }
 
     private void createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel ch = new NotificationChannel(
-                    CHANNEL_ID, "Mori Downloads", NotificationManager.IMPORTANCE_DEFAULT);
-            ch.setDescription("Mori download notifications");
+                    CHANNEL_ID, "Miko Downloads", NotificationManager.IMPORTANCE_DEFAULT);
+            ch.setDescription("Miko download notifications");
             NotificationManager nm = getSystemService(NotificationManager.class);
             if (nm != null) nm.createNotificationChannel(ch);
         }
@@ -243,7 +243,7 @@ public class ShareActivity extends AppCompatActivity {
         nm.notify(NOTIF_ID_BASE + (notifCounter++), b.build());
     }
 
-    public class MoriShareBridge {
+    public class MikoShareBridge {
         @JavascriptInterface
         public String getEngineSecurityKey(String challenge) {
             try {
@@ -290,7 +290,7 @@ public class ShareActivity extends AppCompatActivity {
 
         /**
          * Synchronous HTTP request bridge (mirrors CapacitorHttp API shape).
-         * Called from httpHelper.js via window.MoriShareBridge.
+         * Called from httpHelper.js via window.MikoShareBridge.
          * NOTE: Must be called off the main thread (Android enforces this).
          *
          * @param optionsJson JSON: { url, method, headers, data, params, responseType }
@@ -377,7 +377,7 @@ public class ShareActivity extends AppCompatActivity {
          *
          * @param url         Direct media URL
          * @param filename    Target filename (will be sanitized)
-         * @param folder      Subfolder under Downloads/ (e.g. "Mori/TikTok")
+         * @param folder      Subfolder under Downloads/ (e.g. "Miko/TikTok")
          * @param headersJson Extra headers JSON or empty string
          * @param title       Title shown in completion notification
          */
@@ -428,7 +428,7 @@ public class ShareActivity extends AppCompatActivity {
                         return;
                     }
 
-                    // Resolve custom target directory across storage (e.g. Movies/Mori, Music/Mori, Download/Mori, or custom)
+                    // Resolve custom target directory across storage (e.g. Movies/Miko, Music/Miko, Download/Miko, or custom)
                     boolean hasAllFiles = true;
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                         hasAllFiles = Environment.isExternalStorageManager();
@@ -443,15 +443,15 @@ public class ShareActivity extends AppCompatActivity {
                             targetDir = new File(Environment.getExternalStorageDirectory(), trimmed);
                         }
                     } else {
-                        String sub = "Mori";
+                        String sub = "Miko";
                         if (folder != null && folder.trim().toLowerCase().startsWith("download/")) {
                             sub = folder.trim().substring(9).trim();
                         }
-                        targetDir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), sub.isEmpty() ? "Mori" : sub);
+                        targetDir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), sub.isEmpty() ? "Miko" : sub);
                     }
                     if (!targetDir.exists()) {
                         if (!targetDir.mkdirs()) {
-                            targetDir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "Mori");
+                            targetDir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "Miko");
                             targetDir.mkdirs();
                         }
                     }
@@ -715,12 +715,12 @@ public class ShareActivity extends AppCompatActivity {
     }
     
     private String sanitize(String name) {
-        if (name == null) return "Mori_Media";
+        if (name == null) return "Miko_Media";
         String clean = name.replaceAll("[\\\\/:*?\"<>|]", "_").trim();
         // Remove leading dots to prevent creating Android hidden files (.filename)
         while (clean.startsWith(".")) {
             clean = clean.substring(1).trim();
         }
-        return clean.isEmpty() ? "Mori_Media" : clean;
+        return clean.isEmpty() ? "Miko_Media" : clean;
     }
 }

@@ -153,7 +153,7 @@ export async function pickNativeFolder() {
   }
 
   // 2. Android
-  if (window.MoriMainBridge?.pickFolder) {
+  if (window.MikoMainBridge?.pickFolder) {
     return new Promise((resolve) => {
       const callbackId = "folder_" + Date.now();
       window.__moriFolderCallback = window.__moriFolderCallback || {};
@@ -161,7 +161,7 @@ export async function pickNativeFolder() {
         delete window.__moriFolderCallback[callbackId];
         resolve(folderPath || null);
       };
-      window.MoriMainBridge.pickFolder(callbackId);
+      window.MikoMainBridge.pickFolder(callbackId);
     });
   }
 
@@ -188,9 +188,9 @@ export async function openNativeFolder(targetPath) {
   }
 
   // 2. Android
-  if (window.MoriMainBridge?.openFolder) {
+  if (window.MikoMainBridge?.openFolder) {
     try {
-      const res = window.MoriMainBridge.openFolder(targetPath);
+      const res = window.MikoMainBridge.openFolder(targetPath);
       if (res) return true;
     } catch (_) {}
   }

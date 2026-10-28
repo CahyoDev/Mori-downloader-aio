@@ -18,11 +18,11 @@ import {
   getActiveScraperVersion,
   getActiveScraprVersion,
   checkForScraprOtaUpdate,
-  isMoriInstalled,
+  isMikoInstalled,
   isScraprInstalled,
-  downloadMoriEngine,
+  downloadMikoEngine,
   downloadScraprEngine,
-  uninstallMoriEngine,
+  uninstallMikoEngine,
   uninstallScraprEngine,
   RESOLVER_LINK_PLATFORMS,
   SHORTLINK_PLATFORMS,
@@ -38,7 +38,7 @@ import {
   deleteHistoryItems,
   readClipboard,
   getNonCollidingPath,
-  resetMori,
+  resetMiko,
   getStats,
   DEFAULT_DOWNLOAD_DIR,
   CONFIG_PATH,
@@ -47,8 +47,8 @@ import {
   compileImagesToPdf,
   CHROME_UA,
   loadScraprEngine,
-  fetchMoriEngineHistory,
-  downloadMoriEngineByCommit,
+  fetchMikoEngineHistory,
+  downloadMikoEngineByCommit,
   fetchScraprEngineVersions,
   downloadScraprEngineVersion,
 } from "./engine.js";
@@ -225,7 +225,7 @@ function printBanner(coreVer, scraprVer) {
 }
 
 async function ensureEnginesInstalled() {
-  const moriInstalled = isMoriInstalled();
+  const moriInstalled = isMikoInstalled();
   const scraprInstalled = isScraprInstalled();
 
   if (moriInstalled || scraprInstalled) {
@@ -233,8 +233,8 @@ async function ensureEnginesInstalled() {
   }
 
   p.note(
-    `Welcome to Mori CLI!\n\n` +
-      `Mori is a lightweight CLI wrapper without pre-bundled scraper engines.\n` +
+    `Welcome to Miko CLI!\n\n` +
+      `Miko is a lightweight CLI wrapper without pre-bundled scraper engines.\n` +
       `Choose which engine(s) you would like to download to get started:`,
     pc.bold("First-Time Engine Setup"),
   );
@@ -244,7 +244,7 @@ async function ensureEnginesInstalled() {
     options: [
       {
         value: "both",
-        label: "Both (Mori Core + Scrapr) [Recommended]",
+        label: "Both (Miko Core + Scrapr) [Recommended]",
         hint: "All 27 platforms: social media, audio, file hosts & unshorteners",
       },
       {
@@ -254,7 +254,7 @@ async function ensureEnginesInstalled() {
       },
       {
         value: "mori",
-        label: "Mori Engine only (~80 KB)",
+        label: "Miko Engine only (~80 KB)",
         hint: "Ultra lightweight core scrapers (TikTok, IG, YouTube, Spotify, X, etc.)",
       },
       {
@@ -273,12 +273,12 @@ async function ensureEnginesInstalled() {
 
   if (choice === "both" || choice === "mori") {
     const s = p.spinner();
-    s.start(pc.dim("Installing Mori Core Engine (~80 KB)..."));
+    s.start(pc.dim("Installing Miko Core Engine (~80 KB)..."));
     try {
-      const res = await downloadMoriEngine();
-      s.stop(pc.bold(`✔ Mori Core Engine installed (v${res.version}).`));
+      const res = await downloadMikoEngine();
+      s.stop(pc.bold(`✔ Miko Core Engine installed (v${res.version}).`));
     } catch (err) {
-      s.stop(pc.bold(`✕ Failed to install Mori Engine: ${err.message}`));
+      s.stop(pc.bold(`✕ Failed to install Miko Engine: ${err.message}`));
     }
   }
 
@@ -300,7 +300,7 @@ async function ensureEnginesInstalled() {
     `${pc.bold("● Default engine set:")} ${pc.white(defEngine)} ${pc.dim("(change anytime with /engine)")}`,
   );
 
-  return isMoriInstalled() || isScraprInstalled();
+  return isMikoInstalled() || isScraprInstalled();
 }
 
 function printHelp() {
@@ -314,7 +314,7 @@ ${pc.bold("USAGE:")}
   ${pc.white("npx @coflyn/mori")} ${pc.dim("[URL]")} ${pc.dim("[OPTIONS]")}
 
 ${pc.bold("OPTIONS:")}
-  ${pc.white("-o, --output <dir>")}             Destination folder (default: ${pc.dim("~/Downloads/Mori")})
+  ${pc.white("-o, --output <dir>")}             Destination folder (default: ${pc.dim("~/Downloads/Miko")})
   ${pc.white("-e, --engine <auto|mori|scrapr>")}  Scraper engine choice (default: ${pc.dim("auto")})
   ${pc.white("-s, --server <1|2>")}              Choose scraper server (TikTok, IG, YouTube, X, Spotify)
   ${pc.white("-a, --audio")}                     Download audio-only stream (MP3/M4A)
@@ -517,10 +517,10 @@ async function handleScrapeAndDownload(targetUrl, options) {
   const serverTag = media.server ? ` • ${media.server}` : "";
   const engineBadge =
     media.engine === "scrapr"
-      ? media.fallbackFromMori
+      ? media.fallbackFromMiko
         ? pc.yellow(`[Scrapr • Fallback${serverTag}]`)
         : pc.cyan(`[Scrapr Engine${serverTag}]`)
-      : pc.green(`[Mori Engine${serverTag}]`);
+      : pc.green(`[Miko Engine${serverTag}]`);
 
   // Direct Link / Resolver Platforms (catbox, pixeldrain, sfl.gl, mediafire, sfile, etc.)
   if (RESOLVER_LINK_PLATFORMS.has(media.platform)) {
@@ -1416,20 +1416,20 @@ async function handleSearchAndDownload(query, forcedType = null, options = {}) {
   return false;
 }
 
-async function handleRollbackMori() {
+async function handleRollbackMiko() {
   const s = p.spinner();
-  s.start(pc.dim("Fetching Mori Engine commit history from GitHub..."));
-  const history = await fetchMoriEngineHistory();
+  s.start(pc.dim("Fetching Miko Engine commit history from GitHub..."));
+  const history = await fetchMikoEngineHistory();
   s.stop(pc.dim("History fetched."));
 
   if (history.length === 0) {
-    p.log.warn("Could not fetch Mori Core commit history from GitHub.");
+    p.log.warn("Could not fetch Miko Core commit history from GitHub.");
     return false;
   }
 
   const currentVer = getActiveScraperVersion();
   const commitChoice = await p.select({
-    message: `Select Mori Core version / commit (Current: v${currentVer || "none"}):`,
+    message: `Select Miko Core version / commit (Current: v${currentVer || "none"}):`,
     options: [
       ...history.map((h, idx) => ({
         value: h.fullSha,
@@ -1443,12 +1443,12 @@ async function handleRollbackMori() {
   if (p.isCancel(commitChoice) || commitChoice === "cancel") return false;
 
   const dlSpin = p.spinner();
-  dlSpin.start(pc.dim("Downloading Mori Core bundle..."));
+  dlSpin.start(pc.dim("Downloading Miko Core bundle..."));
   try {
-    const res = await downloadMoriEngineByCommit(commitChoice, (msg) => {
+    const res = await downloadMikoEngineByCommit(commitChoice, (msg) => {
       dlSpin.message(pc.dim(msg));
     });
-    dlSpin.stop(pc.bold(`✔ Mori Core Engine installed (v${res.version}).`));
+    dlSpin.stop(pc.bold(`✔ Miko Core Engine installed (v${res.version}).`));
     return true;
   } catch (err) {
     dlSpin.stop(pc.bold(`✕ Installation failed: ${err.message}`));
@@ -1527,13 +1527,13 @@ async function main() {
     if (core) parts.push(`mori core v${core}`);
     if (scrapr) parts.push(`scrapr v${scrapr}`);
     const engStr = parts.length > 0 ? ` (${parts.join(" • ")})` : " (no engines installed)";
-    console.log(`Mori CLI v${APP_VERSION}${engStr}`);
+    console.log(`Miko CLI v${APP_VERSION}${engStr}`);
     process.exit(0);
   }
 
   // Handle manual OTA update flag
   if (values.update) {
-    const moriInst = isMoriInstalled();
+    const moriInst = isMikoInstalled();
     const scraprInst = isScraprInstalled();
 
     if (!moriInst && !scraprInst) {
@@ -1556,13 +1556,13 @@ async function main() {
       const lines = [];
       if (moriUpdate?.updated) {
         lines.push(
-          pc.bold(`✔ Mori Core updated to v${moriUpdate.newVersion}`) +
+          pc.bold(`✔ Miko Core updated to v${moriUpdate.newVersion}`) +
             (moriUpdate.changelog ? pc.dim(` — ${moriUpdate.changelog}`) : ""),
         );
       } else if (moriInst && moriUpdate) {
         lines.push(
           pc.dim(
-            `Mori Core is up to date (v${moriUpdate.currentVersion || getActiveScraperVersion()}).`,
+            `Miko Core is up to date (v${moriUpdate.currentVersion || getActiveScraperVersion()}).`,
           ),
         );
       }
@@ -1591,18 +1591,18 @@ async function main() {
   printBanner(coreVer, scraprVer);
 
   // Check if first-run engine setup is required
-  if (!isMoriInstalled() && !isScraprInstalled()) {
+  if (!isMikoInstalled() && !isScraprInstalled()) {
     await ensureEnginesInstalled();
   }
 
   // Background non-blocking silent OTA check (only for installed engines)
-  if (isMoriInstalled()) {
+  if (isMikoInstalled()) {
     checkForOtaUpdate(false)
       .then((ota) => {
         if (ota?.updated) {
           p.log.message(
             pc.dim(
-              `● New Mori Core patch installed in background: v${ota.newVersion}`,
+              `● New Miko Core patch installed in background: v${ota.newVersion}`,
             ),
           );
         }
@@ -2132,7 +2132,7 @@ async function main() {
           }
 
           case "engine": {
-            const moriInst = isMoriInstalled();
+            const moriInst = isMikoInstalled();
             const scraprInst = isScraprInstalled();
             const currentPref = getSavedConfig().defaultEngine || "auto";
 
@@ -2140,11 +2140,11 @@ async function main() {
               {
                 value: "auto",
                 label: "Auto (Recommended)",
-                hint: `Cascade engines • Mori: ${moriInst ? "v" + (getActiveScraperVersion() || "installed") : "missing"} • Scrapr: ${scraprInst ? "v" + (getActiveScraprVersion() || "installed") : "missing"}`,
+                hint: `Cascade engines • Miko: ${moriInst ? "v" + (getActiveScraperVersion() || "installed") : "missing"} • Scrapr: ${scraprInst ? "v" + (getActiveScraprVersion() || "installed") : "missing"}`,
               },
               {
                 value: "mori",
-                label: "Mori Engine",
+                label: "Miko Engine",
                 hint: `Core browser scrapers ~80 KB • ${moriInst ? "Installed (v" + (getActiveScraperVersion() || "1.0.0") + ")" : "Not installed"}`,
               },
               {
@@ -2158,7 +2158,7 @@ async function main() {
               options.push({
                 value: "install_missing",
                 label: "Install Missing Engine...",
-                hint: !moriInst && !scraprInst ? "Both missing" : !moriInst ? "Install Mori" : "Install Scrapr",
+                hint: !moriInst && !scraprInst ? "Both missing" : !moriInst ? "Install Miko" : "Install Scrapr",
               });
             }
 
@@ -2179,10 +2179,10 @@ async function main() {
             if (choice === "install_missing") {
               if (!moriInst) {
                 const s = p.spinner();
-                s.start(pc.dim("Installing Mori Core Engine (~80 KB)..."));
+                s.start(pc.dim("Installing Miko Core Engine (~80 KB)..."));
                 try {
-                  const res = await downloadMoriEngine();
-                  s.stop(pc.bold(`✔ Mori Core Engine installed (v${res.version}).`));
+                  const res = await downloadMikoEngine();
+                  s.stop(pc.bold(`✔ Miko Core Engine installed (v${res.version}).`));
                 } catch (err) {
                   s.stop(pc.bold(`✕ Failed: ${err.message}`));
                 }
@@ -2206,7 +2206,7 @@ async function main() {
                 options: [
                   {
                     value: "reinstall_mori",
-                    label: "Reinstall Latest Mori Engine (~80 KB)",
+                    label: "Reinstall Latest Miko Engine (~80 KB)",
                     hint: moriInst ? "Re-fetch latest bundle" : "Install",
                   },
                   {
@@ -2216,7 +2216,7 @@ async function main() {
                   },
                   {
                     value: "version_mori",
-                    label: "Choose / Downgrade Mori Core Version...",
+                    label: "Choose / Downgrade Miko Core Version...",
                     hint: "Install specific commit from GitHub",
                   },
                   {
@@ -2228,7 +2228,7 @@ async function main() {
                     ? [
                         {
                           value: "uninstall_mori",
-                          label: "Uninstall Mori Engine",
+                          label: "Uninstall Miko Engine",
                           hint: "Delete ~/.mori/scrapers-bundle.js",
                         },
                       ]
@@ -2250,10 +2250,10 @@ async function main() {
 
               if (mgmtChoice === "reinstall_mori") {
                 const s = p.spinner();
-                s.start(pc.dim("Downloading Mori Engine..."));
+                s.start(pc.dim("Downloading Miko Engine..."));
                 try {
-                  const res = await downloadMoriEngine();
-                  s.stop(pc.bold(`✔ Mori Engine installed (v${res.version}).`));
+                  const res = await downloadMikoEngine();
+                  s.stop(pc.bold(`✔ Miko Engine installed (v${res.version}).`));
                 } catch (err) {
                   s.stop(pc.bold(`✕ Failed: ${err.message}`));
                 }
@@ -2267,12 +2267,12 @@ async function main() {
                   s.stop(pc.bold(`✕ Failed: ${err.message}`));
                 }
               } else if (mgmtChoice === "version_mori") {
-                await handleRollbackMori();
+                await handleRollbackMiko();
               } else if (mgmtChoice === "version_scrapr") {
                 await handleRollbackScrapr();
               } else if (mgmtChoice === "uninstall_mori") {
-                uninstallMoriEngine();
-                p.log.message(pc.dim("✔ Mori Engine uninstalled."));
+                uninstallMikoEngine();
+                p.log.message(pc.dim("✔ Miko Engine uninstalled."));
               } else if (mgmtChoice === "uninstall_scrapr") {
                 uninstallScraprEngine();
                 p.log.message(pc.dim("✔ Scrapr Engine uninstalled."));
@@ -2283,15 +2283,15 @@ async function main() {
             // If selected mori but not installed
             if (choice === "mori" && !moriInst) {
               const confirmDl = await p.confirm({
-                message: "Mori Engine is not installed. Download now (~80 KB)?",
+                message: "Miko Engine is not installed. Download now (~80 KB)?",
                 initialValue: true,
               });
               if (!p.isCancel(confirmDl) && confirmDl) {
                 const s = p.spinner();
-                s.start(pc.dim("Downloading Mori Engine..."));
+                s.start(pc.dim("Downloading Miko Engine..."));
                 try {
-                  const res = await downloadMoriEngine();
-                  s.stop(pc.bold(`✔ Mori Engine installed (v${res.version}).`));
+                  const res = await downloadMikoEngine();
+                  s.stop(pc.bold(`✔ Miko Engine installed (v${res.version}).`));
                 } catch (err) {
                   s.stop(pc.bold(`✕ Failed: ${err.message}`));
                   break;
@@ -2336,7 +2336,7 @@ async function main() {
               options: [
                 {
                   value: "mori",
-                  label: "Mori Core Engine",
+                  label: "Miko Core Engine",
                   hint: `Current: v${getActiveScraperVersion() || "not installed"}`,
                 },
                 {
@@ -2351,7 +2351,7 @@ async function main() {
             if (p.isCancel(rbChoice) || rbChoice === "cancel") break;
 
             if (rbChoice === "mori") {
-              await handleRollbackMori();
+              await handleRollbackMiko();
             } else if (rbChoice === "scrapr") {
               await handleRollbackScrapr();
             }
@@ -2508,7 +2508,7 @@ async function main() {
               `${pc.bold("Default Engine:")} ${pc.white(cfg.defaultEngine || "auto")}`,
               `${pc.bold("Default Server:")} ${pc.white(cfg.defaultServer || "auto")}`,
               `${pc.bold("CLI Version   :")} ${pc.white(`v${APP_VERSION}`)}`,
-              `${pc.bold("Mori Core Ver :")} ${pc.white(`v${getActiveScraperVersion()}`)}`,
+              `${pc.bold("Miko Core Ver :")} ${pc.white(`v${getActiveScraperVersion()}`)}`,
               `${pc.bold("Scrapr Ver    :")} ${pc.white(`v${getActiveScraprVersion()}`)}`,
               `${pc.bold("Config Path   :")} ${pc.dim(CONFIG_PATH)}`,
             ];
@@ -2581,14 +2581,14 @@ async function main() {
               pc.bold("Platform Breakdown:"),
               breakdown,
             ];
-            p.note(statLines.join("\n"), pc.dim("Mori Download Statistics"));
+            p.note(statLines.join("\n"), pc.dim("Miko Download Statistics"));
             break;
           }
 
           case "reset": {
             const confirm = await p.confirm({
               message:
-                "Reset Mori config, cached scrapers, and history to factory defaults?",
+                "Reset Miko config, cached scrapers, and history to factory defaults?",
               initialValue: false,
             });
             if (p.isCancel(confirm) || !confirm) {
@@ -2596,11 +2596,11 @@ async function main() {
               break;
             }
 
-            resetMori();
+            resetMiko();
             currentOutputDir = DEFAULT_DOWNLOAD_DIR;
             p.log.message(
               pc.bold(
-                "✔ Mori reset to default state (config, OTA cache, history cleared).",
+                "✔ Miko reset to default state (config, OTA cache, history cleared).",
               ),
             );
             break;
@@ -2613,7 +2613,7 @@ async function main() {
             try {
               const cliVer = await checkCliUpdate();
               const [moriRes, scraprRes] = await Promise.allSettled([
-                isMoriInstalled()
+                isMikoInstalled()
                   ? checkForOtaUpdate(true)
                   : Promise.resolve({ notInstalled: true }),
                 isScraprInstalled()
@@ -2642,11 +2642,11 @@ async function main() {
 
               if (moriUpdate?.notInstalled) {
                 p.log.step(
-                  pc.dim("Mori Engine: Not installed (install with /engine)."),
+                  pc.dim("Miko Engine: Not installed (install with /engine)."),
                 );
               } else if (moriUpdate?.updated) {
                 p.log.step(
-                  pc.bold(`✔ Mori Core updated to v${moriUpdate.newVersion}`) +
+                  pc.bold(`✔ Miko Core updated to v${moriUpdate.newVersion}`) +
                     (moriUpdate.changelog
                       ? pc.dim(` — ${moriUpdate.changelog}`)
                       : ""),
@@ -2654,7 +2654,7 @@ async function main() {
               } else if (moriUpdate) {
                 p.log.step(
                   pc.dim(
-                    `Mori Core is up to date (v${moriUpdate.currentVersion || getActiveScraperVersion()}).`,
+                    `Miko Core is up to date (v${moriUpdate.currentVersion || getActiveScraperVersion()}).`,
                   ),
                 );
               }
@@ -2738,12 +2738,12 @@ async function main() {
               `${pc.bold("/history")}       Interactive download history & redownload picker`,
               `${pc.bold("/delete")}        Interactive bulk delete from disk & history (Space)`,
               `${pc.bold("/stats")}         View total downloads & storage statistics`,
-              `${pc.bold("/config")}        Show active Mori configuration`,
+              `${pc.bold("/config")}        Show active Miko configuration`,
               `${pc.bold("/update")}        Check and apply remote OTA scraper patches`,
               `${pc.bold("/rollback")}      Rollback or install specific engine versions`,
-              `${pc.bold("/reset")}         Factory reset Mori config, cache, & history`,
+              `${pc.bold("/reset")}         Factory reset Miko config, cache, & history`,
               `${pc.bold("/clear")}         Clear screen and reprint header`,
-              `${pc.bold("/exit, /q")}      Exit Mori CLI`,
+              `${pc.bold("/exit, /q")}      Exit Miko CLI`,
             ];
             p.note(cmds.join("\n"), pc.dim("Available Commands"));
             break;

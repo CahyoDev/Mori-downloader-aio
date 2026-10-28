@@ -32,16 +32,16 @@ export function formatPathDisplay(pathStr) {
 
 export let customPath = (() => {
   const p = localStorage.getItem("mori_download_path");
-  if (!p || p === "Mori") return "Download/Mori";
+  if (!p || p === "Miko") return "Download/Miko";
   return normalizeSavedPath(p);
 })();
 
 export let customMusicPath = (() => {
   const p = localStorage.getItem("mori_music_path");
-  if (!p || p === "Mori/Music" || p === "Music/Mori") {
+  if (!p || p === "Miko/Music" || p === "Music/Miko") {
     const isAndroid = window.Capacitor?.getPlatform?.() === "android";
-    if (isAndroid) return "Download/Mori/Music";
-    return p || "Music/Mori";
+    if (isAndroid) return "Download/Miko/Music";
+    return p || "Music/Miko";
   }
   return normalizeSavedPath(p);
 })();
@@ -108,7 +108,7 @@ export async function updateStorageInfo() {
     if (tauriInvoke) {
       try {
         const vSize = await tauriInvoke("tauri_get_folder_size", {
-          folder: customPath || "Download/Mori",
+          folder: customPath || "Download/Miko",
         });
         if (typeof vSize === "number") totalSize += vSize;
 
@@ -123,8 +123,8 @@ export async function updateStorageInfo() {
       }
     } else if (Filesystem) {
       totalSize += await getFolderSize("", "CACHE");
-      const vPath = customPath || "Download/Mori";
-      const mPath = customMusicPath || "Music/Mori";
+      const vPath = customPath || "Download/Miko";
+      const mPath = customMusicPath || "Music/Miko";
       const primaryV = await getFolderSize(vPath, "EXTERNAL_STORAGE");
       const legacyV = await getFolderSize(vPath, "EXTERNAL");
       totalSize += Math.max(primaryV, legacyV);
@@ -221,8 +221,8 @@ export function initStorageSettings() {
     if (!item || !isAndroid) return;
 
     item.style.display = "flex";
-    const granted = window.MoriMainBridge?.hasAllFilesPermission
-      ? window.MoriMainBridge.hasAllFilesPermission()
+    const granted = window.MikoMainBridge?.hasAllFilesPermission
+      ? window.MikoMainBridge.hasAllFilesPermission()
       : false;
 
     const lang = translations[currentLang] || translations.en;
@@ -234,18 +234,18 @@ export function initStorageSettings() {
       chip.className = "mori-status-chip " + (granted ? "granted" : "warning");
     }
 
-    // If permission is revoked / not granted, immediately fallback any outside path to Download/Mori
+    // If permission is revoked / not granted, immediately fallback any outside path to Download/Miko
     if (!granted) {
       let changed = false;
       const currentVideo = (localStorage.getItem("mori_download_path") || customPath || "").trim();
       if (
         currentVideo &&
         !currentVideo.toLowerCase().startsWith("download") &&
-        currentVideo !== "Mori"
+        currentVideo !== "Miko"
       ) {
-        customPath = "Download/Mori";
-        localStorage.setItem("mori_download_path", "Download/Mori");
-        if (pathVal) pathVal.textContent = formatPathDisplay("Download/Mori");
+        customPath = "Download/Miko";
+        localStorage.setItem("mori_download_path", "Download/Miko");
+        if (pathVal) pathVal.textContent = formatPathDisplay("Download/Miko");
         changed = true;
       }
 
@@ -253,11 +253,11 @@ export function initStorageSettings() {
       if (
         currentMusic &&
         !currentMusic.toLowerCase().startsWith("download") &&
-        currentMusic !== "Mori/Music"
+        currentMusic !== "Miko/Music"
       ) {
-        customMusicPath = "Download/Mori/Music";
-        localStorage.setItem("mori_music_path", "Download/Mori/Music");
-        if (musicPathVal) musicPathVal.textContent = formatPathDisplay("Download/Mori/Music");
+        customMusicPath = "Download/Miko/Music";
+        localStorage.setItem("mori_music_path", "Download/Miko/Music");
+        if (musicPathVal) musicPathVal.textContent = formatPathDisplay("Download/Miko/Music");
         changed = true;
       }
 
@@ -268,8 +268,8 @@ export function initStorageSettings() {
   };
   updateAllFilesUI();
   document.getElementById("allFilesAccessItem")?.addEventListener("click", () => {
-    if (window.MoriMainBridge?.requestAllFilesPermission) {
-      window.MoriMainBridge.requestAllFilesPermission();
+    if (window.MikoMainBridge?.requestAllFilesPermission) {
+      window.MikoMainBridge.requestAllFilesPermission();
     }
   });
   window.addEventListener("mori_app_resumed", updateAllFilesUI);
@@ -289,20 +289,20 @@ export function initStorageSettings() {
   // Helper for preset chips
   const getVideoPresets = () => {
     if (isAndroid) {
-      return ["Download/Mori", "Movies/Mori", "DCIM/Mori", "Download"];
+      return ["Download/Miko", "Movies/Miko", "DCIM/Miko", "Download"];
     } else if (isDesktop) {
-      return ["Movies/Mori", "Downloads/Mori", "Desktop/Mori"];
+      return ["Movies/Miko", "Downloads/Miko", "Desktop/Miko"];
     }
-    return ["Mori", "Videos"];
+    return ["Miko", "Videos"];
   };
 
   const getMusicPresets = () => {
     if (isAndroid) {
-      return ["Download/Mori/Music", "Music/Mori", "Download/Mori"];
+      return ["Download/Miko/Music", "Music/Miko", "Download/Miko"];
     } else if (isDesktop) {
-      return ["Music/Mori", "Downloads/Mori"];
+      return ["Music/Miko", "Downloads/Miko"];
     }
-    return ["Music", "Mori/Music"];
+    return ["Music", "Miko/Music"];
   };
 
   // 3. Video Download Path Picker
@@ -310,8 +310,8 @@ export function initStorageSettings() {
     const lang = translations[currentLang] || translations.en;
     const presets = getVideoPresets();
     const canBrowse = isDesktop || isAndroid;
-    const hasPerm = isAndroid && window.MoriMainBridge?.hasAllFilesPermission
-      ? window.MoriMainBridge.hasAllFilesPermission()
+    const hasPerm = isAndroid && window.MikoMainBridge?.hasAllFilesPermission
+      ? window.MikoMainBridge.hasAllFilesPermission()
       : true;
 
     const permBannerHtml = !hasPerm
@@ -336,7 +336,7 @@ export function initStorageSettings() {
            <span class="path-label-sm">${lang["label-custom-directory"] || "Target Directory"}</span>
            <div class="mori-input-with-icon">
              <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
-             <input type="text" id="customPathInput" class="mori-input-noborder" value="${customPath}" placeholder="e.g. Movies/Mori" spellcheck="false" autocomplete="off">
+             <input type="text" id="customPathInput" class="mori-input-noborder" value="${customPath}" placeholder="e.g. Movies/Miko" spellcheck="false" autocomplete="off">
            </div>
          </div>
          <span class="path-label-sm">${lang["label-path-presets"] || "Presets"}</span>
@@ -353,15 +353,15 @@ export function initStorageSettings() {
         const input = document.getElementById("customPathInput");
         if (input && input.value.trim()) {
           const newPath = normalizePathInput(input.value);
-          const hasPerm = isAndroid && window.MoriMainBridge?.hasAllFilesPermission
-            ? window.MoriMainBridge.hasAllFilesPermission()
+          const hasPerm = isAndroid && window.MikoMainBridge?.hasAllFilesPermission
+            ? window.MikoMainBridge.hasAllFilesPermission()
             : true;
 
           if (isAndroid && !hasPerm && !newPath.toLowerCase().startsWith("download")) {
-            showToast(lang["desc-all-files-access"] || "All Files Access required. Reverted to Download/Mori.");
-            customPath = "Download/Mori";
-            localStorage.setItem("mori_download_path", "Download/Mori");
-            if (pathVal) pathVal.textContent = formatPathDisplay("Download/Mori");
+            showToast(lang["desc-all-files-access"] || "All Files Access required. Reverted to Download/Miko.");
+            customPath = "Download/Miko";
+            localStorage.setItem("mori_download_path", "Download/Miko");
+            if (pathVal) pathVal.textContent = formatPathDisplay("Download/Miko");
           } else {
             customPath = newPath;
             localStorage.setItem("mori_download_path", newPath);
@@ -411,14 +411,14 @@ export function initStorageSettings() {
       });
 
       document.getElementById("pathPermBanner")?.addEventListener("click", () => {
-        if (window.MoriMainBridge?.requestAllFilesPermission) {
-          window.MoriMainBridge.requestAllFilesPermission();
+        if (window.MikoMainBridge?.requestAllFilesPermission) {
+          window.MikoMainBridge.requestAllFilesPermission();
         }
       });
 
       document.getElementById("resetPathBtn")?.addEventListener("click", () => {
         if (input) {
-          input.value = isAndroid ? "Download/Mori" : "Movies/Mori";
+          input.value = isAndroid ? "Download/Miko" : "Movies/Miko";
           updateActiveChips();
           input.focus();
         }
@@ -435,8 +435,8 @@ export function initStorageSettings() {
     const lang = translations[currentLang] || translations.en;
     const presets = getMusicPresets();
     const canBrowse = isDesktop || isAndroid;
-    const hasPerm = isAndroid && window.MoriMainBridge?.hasAllFilesPermission
-      ? window.MoriMainBridge.hasAllFilesPermission()
+    const hasPerm = isAndroid && window.MikoMainBridge?.hasAllFilesPermission
+      ? window.MikoMainBridge.hasAllFilesPermission()
       : true;
 
     const permBannerHtml = !hasPerm
@@ -461,7 +461,7 @@ export function initStorageSettings() {
            <span class="path-label-sm">${lang["label-custom-directory"] || "Target Directory"}</span>
            <div class="mori-input-with-icon">
              <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/></svg>
-             <input type="text" id="customMusicPathInput" class="mori-input-noborder" value="${customMusicPath}" placeholder="e.g. Music/Mori" spellcheck="false" autocomplete="off">
+             <input type="text" id="customMusicPathInput" class="mori-input-noborder" value="${customMusicPath}" placeholder="e.g. Music/Miko" spellcheck="false" autocomplete="off">
            </div>
          </div>
          <span class="path-label-sm">${lang["label-path-presets"] || "Presets"}</span>
@@ -478,15 +478,15 @@ export function initStorageSettings() {
         const input = document.getElementById("customMusicPathInput");
         if (input && input.value.trim()) {
           const newPath = normalizePathInput(input.value);
-          const hasPerm = isAndroid && window.MoriMainBridge?.hasAllFilesPermission
-            ? window.MoriMainBridge.hasAllFilesPermission()
+          const hasPerm = isAndroid && window.MikoMainBridge?.hasAllFilesPermission
+            ? window.MikoMainBridge.hasAllFilesPermission()
             : true;
 
           if (isAndroid && !hasPerm && !newPath.toLowerCase().startsWith("download")) {
-            showToast(lang["desc-all-files-access"] || "All Files Access required. Reverted to Download/Mori.");
-            customMusicPath = "Download/Mori/Music";
-            localStorage.setItem("mori_music_path", "Download/Mori/Music");
-            if (musicPathVal) musicPathVal.textContent = formatPathDisplay("Download/Mori/Music");
+            showToast(lang["desc-all-files-access"] || "All Files Access required. Reverted to Download/Miko.");
+            customMusicPath = "Download/Miko/Music";
+            localStorage.setItem("mori_music_path", "Download/Miko/Music");
+            if (musicPathVal) musicPathVal.textContent = formatPathDisplay("Download/Miko/Music");
           } else {
             customMusicPath = newPath;
             localStorage.setItem("mori_music_path", newPath);
@@ -536,14 +536,14 @@ export function initStorageSettings() {
       });
 
       document.getElementById("musicPathPermBanner")?.addEventListener("click", () => {
-        if (window.MoriMainBridge?.requestAllFilesPermission) {
-          window.MoriMainBridge.requestAllFilesPermission();
+        if (window.MikoMainBridge?.requestAllFilesPermission) {
+          window.MikoMainBridge.requestAllFilesPermission();
         }
       });
 
       document.getElementById("resetMusicPathBtn")?.addEventListener("click", () => {
         if (input) {
-          input.value = "Music/Mori";
+          input.value = "Music/Miko";
           updateActiveChips();
           input.focus();
         }

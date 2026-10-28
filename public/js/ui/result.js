@@ -858,9 +858,9 @@ export function renderResult(result, originalUrl) {
         let currentFailedIndices = [];
 
         // Start Foreground Service notification
-        if (window.MoriMainBridge?.startDownloadService) {
+        if (window.MikoMainBridge?.startDownloadService) {
           try {
-            window.MoriMainBridge.startDownloadService(
+            window.MikoMainBridge.startDownloadService(
               `Downloading Playlist (1/${indicesToProcess.length})...`,
             );
           } catch (_) {}
@@ -928,9 +928,9 @@ export function renderResult(result, originalUrl) {
                   titleSpan.textContent = `${progressStr} ${completedCount}/${indicesToProcess.length}`;
                 }
 
-                if (window.MoriMainBridge?.startDownloadService) {
+                if (window.MikoMainBridge?.startDownloadService) {
                   try {
-                    window.MoriMainBridge.startDownloadService(
+                    window.MikoMainBridge.startDownloadService(
                       `Downloading (${completedCount}/${indicesToProcess.length}): ${cleanLabel || result.title}`,
                     );
                   } catch (_) {}
@@ -971,9 +971,9 @@ export function renderResult(result, originalUrl) {
           window._moriPlaylistDownloading = false;
           releaseWakeLock();
 
-          if (window.MoriMainBridge?.stopDownloadService) {
+          if (window.MikoMainBridge?.stopDownloadService) {
             try {
-              window.MoriMainBridge.stopDownloadService();
+              window.MikoMainBridge.stopDownloadService();
             } catch (_) {}
           }
         }
@@ -1007,9 +1007,9 @@ export function renderResult(result, originalUrl) {
             ).replace("${count}", total);
             showToast(completeMsg);
 
-            if (window.MoriMainBridge?.showCompleteNotification) {
+            if (window.MikoMainBridge?.showCompleteNotification) {
               try {
-                window.MoriMainBridge.showCompleteNotification(
+                window.MikoMainBridge.showCompleteNotification(
                   result.title || "Playlist",
                   t("notif-all-downloaded", { total }),
                 );
@@ -1158,9 +1158,9 @@ export async function exportGalleryToPdf(title, items) {
   try {
     // Acquire Wake Lock & Start Native Foreground Service for background protection
     if (typeof requestWakeLock === "function") requestWakeLock();
-    if (window.MoriMainBridge?.startDownloadService) {
+    if (window.MikoMainBridge?.startDownloadService) {
       try {
-        window.MoriMainBridge.startDownloadService("Exporting PDF Gallery...");
+        window.MikoMainBridge.startDownloadService("Exporting PDF Gallery...");
       } catch (e) {}
     }
 
@@ -1367,10 +1367,10 @@ export async function exportGalleryToPdf(title, items) {
 
     // Dynamic folder structure for PDF exports
     let pdfSubfolder = (
-      localStorage.getItem("mori_download_path") || "Download/Mori"
+      localStorage.getItem("mori_download_path") || "Download/Miko"
     ).trim();
-    if (pdfSubfolder === "Mori") {
-      pdfSubfolder = "Download/Mori";
+    if (pdfSubfolder === "Miko") {
+      pdfSubfolder = "Download/Miko";
     }
     if (localStorage.getItem("mori_auto_folder") !== "false") {
       const firstUrl = (items[0]?.url || "").toLowerCase();
@@ -1464,9 +1464,9 @@ export async function exportGalleryToPdf(title, items) {
             translations[currentLang]["status-saved"] || "Saved",
           );
 
-          if (window.MoriMainBridge?.showCompleteNotification) {
+          if (window.MikoMainBridge?.showCompleteNotification) {
             try {
-              window.MoriMainBridge.showCompleteNotification(
+              window.MikoMainBridge.showCompleteNotification(
                 "PDF Gallery Complete ✓",
                 targetPdfPath,
               );
@@ -1504,7 +1504,7 @@ export async function exportGalleryToPdf(title, items) {
           savedTauri = true;
           showToast(
             translations[currentLang]["pdf-toast-saved"] ||
-              "PDF saved to Mori folder!",
+              "PDF saved to Miko folder!",
           );
           downloadBubble.completeDownload(
             pdfDlId,
@@ -1539,16 +1539,16 @@ export async function exportGalleryToPdf(title, items) {
         ": " +
         (err.message.includes("memory") ? "Out of memory" : err.message),
     );
-    if (window.MoriMainBridge?.showFailedNotification) {
+    if (window.MikoMainBridge?.showFailedNotification) {
       try {
-        window.MoriMainBridge.showFailedNotification("PDF Export", err.message);
+        window.MikoMainBridge.showFailedNotification("PDF Export", err.message);
       } catch (e) {}
     }
   } finally {
     if (typeof releaseWakeLock === "function") releaseWakeLock();
-    if (window.MoriMainBridge?.stopDownloadService) {
+    if (window.MikoMainBridge?.stopDownloadService) {
       try {
-        window.MoriMainBridge.stopDownloadService();
+        window.MikoMainBridge.stopDownloadService();
       } catch (e) {}
     }
   }

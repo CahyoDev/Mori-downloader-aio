@@ -40,7 +40,7 @@ export async function verifyBiometric(
         await NativeBiometric.verifyIdentity({
           reason:
             translations[currentLang][reasonLabel] || "Authentication required",
-          title: "Mori Privacy Lock",
+          title: "Miko Privacy Lock",
           subtitle: "",
           description: "",
         });

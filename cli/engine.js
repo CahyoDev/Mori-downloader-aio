@@ -158,7 +158,7 @@ export const HISTORY_PATH = path.join(CONFIG_DIR, "history.json");
 export const DEFAULT_DOWNLOAD_DIR = path.join(
   os.homedir(),
   "Downloads",
-  "Mori",
+  "Miko",
 );
 
 export function getSavedConfig() {
@@ -396,8 +396,8 @@ export function getStats() {
   };
 }
 
-// 3. OTA Hot-Patching Engine (Mori Core + Scrapr Engine)
-const GITHUB_REPO = "coflyn/Mori";
+// 3. OTA Hot-Patching Engine (Miko Core + Scrapr Engine)
+const GITHUB_REPO = "coflyn/Miko";
 const OTA_DIR = CONFIG_DIR;
 export const OTA_BUNDLE_PATH = path.join(OTA_DIR, "scrapers-bundle.js");
 export const OTA_META_PATH = path.join(OTA_DIR, "scrapers-meta.json");
@@ -424,7 +424,7 @@ export function isNewerSemver(latest, current) {
   return false;
 }
 
-export function resetMori() {
+export function resetMiko() {
   const filesToDelete = [
     CONFIG_PATH,
     HISTORY_PATH,
@@ -445,7 +445,7 @@ export function resetMori() {
 export const OTA_VERSION_URL = `https://raw.githubusercontent.com/${GITHUB_REPO}/main/public/scrapers-version.json`;
 export const OTA_BUNDLE_URL = `https://raw.githubusercontent.com/${GITHUB_REPO}/main/public/js/scrapers/bundle.js`;
 
-export function isMoriInstalled() {
+export function isMikoInstalled() {
   return fs.existsSync(OTA_BUNDLE_PATH);
 }
 
@@ -474,26 +474,26 @@ export function getActiveScraprVersion() {
 }
 
 /**
- * Downloads and installs Mori Core Engine into ~/.mori/
+ * Downloads and installs Miko Core Engine into ~/.mori/
  */
-export async function downloadMoriEngine(onProgress) {
-  if (onProgress) onProgress("Fetching Mori version metadata...");
+export async function downloadMikoEngine(onProgress) {
+  if (onProgress) onProgress("Fetching Miko version metadata...");
   const metaRes = await fetch(OTA_VERSION_URL, {
     signal: AbortSignal.timeout(10000),
-    headers: { "User-Agent": "Mori-CLI", "Cache-Control": "no-cache" },
+    headers: { "User-Agent": "Miko-CLI", "Cache-Control": "no-cache" },
   });
-  if (!metaRes.ok) throw new Error(`Failed to fetch Mori version (HTTP ${metaRes.status})`);
+  if (!metaRes.ok) throw new Error(`Failed to fetch Miko version (HTTP ${metaRes.status})`);
   const meta = await metaRes.json();
 
-  if (onProgress) onProgress("Downloading Mori Engine bundle (~80 KB)...");
+  if (onProgress) onProgress("Downloading Miko Engine bundle (~80 KB)...");
   const bundleRes = await fetch(OTA_BUNDLE_URL, {
     signal: AbortSignal.timeout(30000),
-    headers: { "User-Agent": "Mori-CLI", "Cache-Control": "no-cache" },
+    headers: { "User-Agent": "Miko-CLI", "Cache-Control": "no-cache" },
   });
-  if (!bundleRes.ok) throw new Error(`Failed to download Mori bundle (HTTP ${bundleRes.status})`);
+  if (!bundleRes.ok) throw new Error(`Failed to download Miko bundle (HTTP ${bundleRes.status})`);
   const bundleText = await bundleRes.text();
   if (!bundleText || bundleText.length < 5000) {
-    throw new Error("Invalid Mori bundle payload received.");
+    throw new Error("Invalid Miko bundle payload received.");
   }
 
   if (!fs.existsSync(OTA_DIR)) {
@@ -516,7 +516,7 @@ export async function downloadMoriEngine(onProgress) {
     "utf8",
   );
 
-  cachedMoriScrapers = null;
+  cachedMikoScrapers = null;
   return { success: true, version: meta.scraperVersion || "1.0.0" };
 }
 
@@ -529,7 +529,7 @@ export async function downloadScraprEngine(onProgress) {
   try {
     const metaRes = await fetch(SCRAPR_VERSION_URL, {
       signal: AbortSignal.timeout(10000),
-      headers: { "User-Agent": "Mori-CLI", "Cache-Control": "no-cache" },
+      headers: { "User-Agent": "Miko-CLI", "Cache-Control": "no-cache" },
     });
     if (metaRes.ok) {
       const meta = await metaRes.json();
@@ -544,7 +544,7 @@ export async function downloadScraprEngine(onProgress) {
   try {
     const bundleRes = await fetch(SCRAPR_BUNDLE_URL, {
       signal: AbortSignal.timeout(45000),
-      headers: { "User-Agent": "Mori-CLI", "Cache-Control": "no-cache" },
+      headers: { "User-Agent": "Miko-CLI", "Cache-Control": "no-cache" },
     });
     if (bundleRes.ok) {
       bundleText = await bundleRes.text();
@@ -587,14 +587,14 @@ export async function downloadScraprEngine(onProgress) {
   return { success: true, version };
 }
 
-export function uninstallMoriEngine() {
+export function uninstallMikoEngine() {
   if (fs.existsSync(OTA_BUNDLE_PATH)) {
     try { fs.unlinkSync(OTA_BUNDLE_PATH); } catch (_) {}
   }
   if (fs.existsSync(OTA_META_PATH)) {
     try { fs.unlinkSync(OTA_META_PATH); } catch (_) {}
   }
-  cachedMoriScrapers = null;
+  cachedMikoScrapers = null;
   return true;
 }
 
@@ -609,13 +609,13 @@ export function uninstallScraprEngine() {
   return true;
 }
 
-export async function fetchMoriEngineHistory() {
+export async function fetchMikoEngineHistory() {
   try {
     const res = await fetch(
       `https://api.github.com/repos/${GITHUB_REPO}/commits?path=public/js/scrapers/bundle.js&per_page=15`,
       {
         signal: AbortSignal.timeout(10000),
-        headers: { "User-Agent": "Mori-CLI" },
+        headers: { "User-Agent": "Miko-CLI" },
       },
     );
     if (!res.ok) return [];
@@ -632,9 +632,9 @@ export async function fetchMoriEngineHistory() {
   }
 }
 
-export async function downloadMoriEngineByCommit(commitSha, onProgress) {
+export async function downloadMikoEngineByCommit(commitSha, onProgress) {
   const shortSha = commitSha.slice(0, 7);
-  if (onProgress) onProgress(`Fetching Mori Core bundle at commit ${shortSha}...`);
+  if (onProgress) onProgress(`Fetching Miko Core bundle at commit ${shortSha}...`);
 
   const bundleUrl = `https://raw.githubusercontent.com/${GITHUB_REPO}/${commitSha}/public/js/scrapers/bundle.js`;
   const metaUrl = `https://raw.githubusercontent.com/${GITHUB_REPO}/${commitSha}/public/scrapers-version.json`;
@@ -642,11 +642,11 @@ export async function downloadMoriEngineByCommit(commitSha, onProgress) {
   const [bundleRes, metaRes] = await Promise.all([
     fetch(bundleUrl, {
       signal: AbortSignal.timeout(30000),
-      headers: { "User-Agent": "Mori-CLI", "Cache-Control": "no-cache" },
+      headers: { "User-Agent": "Miko-CLI", "Cache-Control": "no-cache" },
     }),
     fetch(metaUrl, {
       signal: AbortSignal.timeout(15000),
-      headers: { "User-Agent": "Mori-CLI", "Cache-Control": "no-cache" },
+      headers: { "User-Agent": "Miko-CLI", "Cache-Control": "no-cache" },
     }).catch(() => null),
   ]);
 
@@ -687,7 +687,7 @@ export async function downloadMoriEngineByCommit(commitSha, onProgress) {
     "utf8",
   );
 
-  cachedMoriScrapers = null;
+  cachedMikoScrapers = null;
   return { success: true, version: meta.scraperVersion || shortSha };
 }
 
@@ -695,7 +695,7 @@ export async function fetchScraprEngineVersions() {
   try {
     const res = await fetch("https://registry.npmjs.org/@coflyn/scrapr", {
       signal: AbortSignal.timeout(10000),
-      headers: { "User-Agent": "Mori-CLI" },
+      headers: { "User-Agent": "Miko-CLI" },
     });
     if (!res.ok) return [];
     const data = await res.json();
@@ -721,7 +721,7 @@ export async function downloadScraprEngineVersion(targetVersion, onProgress) {
     try {
       const res = await fetch(u, {
         signal: AbortSignal.timeout(30000),
-        headers: { "User-Agent": "Mori-CLI", "Cache-Control": "no-cache" },
+        headers: { "User-Agent": "Miko-CLI", "Cache-Control": "no-cache" },
       });
       if (res.ok) {
         bundleText = await res.text();
@@ -764,16 +764,16 @@ export async function downloadScraprEngineVersion(targetVersion, onProgress) {
 }
 
 /**
- * Checks for Mori Core OTA updates from GitHub raw.
+ * Checks for Miko Core OTA updates from GitHub raw.
  */
 export async function checkForOtaUpdate(force = false) {
-  if (!isMoriInstalled()) {
+  if (!isMikoInstalled()) {
     return { updated: false, notInstalled: true };
   }
   try {
     const metaRes = await fetch(OTA_VERSION_URL, {
       signal: AbortSignal.timeout(force ? 8000 : 2500),
-      headers: { "User-Agent": "Mori-CLI-OTA", "Cache-Control": "no-cache" },
+      headers: { "User-Agent": "Miko-CLI-OTA", "Cache-Control": "no-cache" },
     });
     if (!metaRes.ok) return { updated: false, reason: "Fetch error" };
 
@@ -783,7 +783,7 @@ export async function checkForOtaUpdate(force = false) {
     if (remoteMeta.scraperVersion && remoteMeta.scraperVersion > currentVer) {
       const bundleRes = await fetch(OTA_BUNDLE_URL, {
         signal: AbortSignal.timeout(15000),
-        headers: { "User-Agent": "Mori-CLI-OTA", "Cache-Control": "no-cache" },
+        headers: { "User-Agent": "Miko-CLI-OTA", "Cache-Control": "no-cache" },
       });
       if (!bundleRes.ok)
         return { updated: false, reason: "Bundle download error" };
@@ -813,7 +813,7 @@ export async function checkForOtaUpdate(force = false) {
         "utf8",
       );
 
-      cachedMoriScrapers = null;
+      cachedMikoScrapers = null;
 
       return {
         updated: true,
@@ -840,7 +840,7 @@ export async function checkForScraprOtaUpdate(force = false) {
   try {
     const metaRes = await fetch(SCRAPR_VERSION_URL, {
       signal: AbortSignal.timeout(force ? 8000 : 2500),
-      headers: { "User-Agent": "Mori-CLI-OTA", "Cache-Control": "no-cache" },
+      headers: { "User-Agent": "Miko-CLI-OTA", "Cache-Control": "no-cache" },
     });
     if (!metaRes.ok) return { updated: false, reason: "Fetch error" };
 
@@ -850,7 +850,7 @@ export async function checkForScraprOtaUpdate(force = false) {
     if (remoteMeta.version && isNewerSemver(remoteMeta.version, currentVer)) {
       const bundleRes = await fetch(SCRAPR_BUNDLE_URL, {
         signal: AbortSignal.timeout(30000),
-        headers: { "User-Agent": "Mori-CLI-OTA", "Cache-Control": "no-cache" },
+        headers: { "User-Agent": "Miko-CLI-OTA", "Cache-Control": "no-cache" },
       });
       if (!bundleRes.ok)
         return { updated: false, reason: "Scrapr bundle download error" };
@@ -894,11 +894,11 @@ export async function checkForScraprOtaUpdate(force = false) {
   }
 }
 
-// 3. Load Scraper Core (Mori Engine)
-let cachedMoriScrapers = null;
+// 3. Load Scraper Core (Miko Engine)
+let cachedMikoScrapers = null;
 
 export function loadScraperEngine() {
-  if (cachedMoriScrapers) return cachedMoriScrapers;
+  if (cachedMikoScrapers) return cachedMikoScrapers;
 
   const localBundlePath = path.join(__dirname, "bundle.js");
   const rootBundlePath = path.join(ROOT_DIR, "public/js/scrapers/bundle.js");
@@ -908,9 +908,9 @@ export function loadScraperEngine() {
     try {
       const patchCode = fs.readFileSync(OTA_BUNDLE_PATH, "utf8");
       (0, eval)(patchCode);
-      if (globalThis.__MoriCoreScrapers) {
-        cachedMoriScrapers = globalThis.__MoriCoreScrapers;
-        return cachedMoriScrapers;
+      if (globalThis.__MikoCoreScrapers) {
+        cachedMikoScrapers = globalThis.__MikoCoreScrapers;
+        return cachedMikoScrapers;
       }
     } catch (_) {
       try {
@@ -931,14 +931,14 @@ export function loadScraperEngine() {
     try {
       const bundleCode = fs.readFileSync(devPath, "utf8");
       (0, eval)(bundleCode);
-      if (globalThis.__MoriCoreScrapers) {
-        cachedMoriScrapers = globalThis.__MoriCoreScrapers;
-        return cachedMoriScrapers;
+      if (globalThis.__MikoCoreScrapers) {
+        cachedMikoScrapers = globalThis.__MikoCoreScrapers;
+        return cachedMikoScrapers;
       }
     } catch (_) {}
   }
 
-  throw new Error("Mori Engine not installed. Use /engine to install.");
+  throw new Error("Miko Engine not installed. Use /engine to install.");
 }
 
 // 3b. Load Scrapr Engine (Engine 2)
@@ -1308,8 +1308,8 @@ export function getPlatformServers(platform, engine = "auto") {
 
 export const PLATFORM_SERVERS = MORI_PLATFORM_SERVERS;
 
-// 5a. Engine 1: Mori Scraper Core
-export async function scrapeWithMori(url, platform, serverPreference = "auto") {
+// 5a. Engine 1: Miko Scraper Core
+export async function scrapeWithMiko(url, platform, serverPreference = "auto") {
   const scrapers = loadScraperEngine();
   let srv = serverPreference;
   if (srv === "1") srv = "server1";
@@ -1868,11 +1868,11 @@ export async function scrapeUrl(
 ) {
   const platform = detectPlatform(url);
   if (!platform) {
-    throw new Error("URL is not supported by Mori.");
+    throw new Error("URL is not supported by Miko.");
   }
 
   const engine = (enginePreference || "auto").toLowerCase();
-  const moriInstalled = isMoriInstalled();
+  const moriInstalled = isMikoInstalled();
   const scraprInstalled = isScraprInstalled();
 
   if (!moriInstalled && !scraprInstalled) {
@@ -1902,9 +1902,9 @@ export async function scrapeUrl(
   // Engine 1 explicit
   if (engine === "mori") {
     if (!moriInstalled) {
-      throw new Error("Mori engine is not installed. Install with /engine.");
+      throw new Error("Miko engine is not installed. Install with /engine.");
     }
-    return scrapeWithMori(url, platform, serverPreference);
+    return scrapeWithMiko(url, platform, serverPreference);
   }
 
   // Auto mode: single engine fallback
@@ -1912,16 +1912,16 @@ export async function scrapeUrl(
     return scrapeWithScrapr(url, platform, serverPreference);
   }
   if (moriInstalled && !scraprInstalled) {
-    return scrapeWithMori(url, platform, serverPreference);
+    return scrapeWithMiko(url, platform, serverPreference);
   }
 
-  // Both installed: Engine 1 (Mori) first -> fallback to Engine 2 (Scrapr)
+  // Both installed: Engine 1 (Miko) first -> fallback to Engine 2 (Scrapr)
   try {
-    return await scrapeWithMori(url, platform, serverPreference);
+    return await scrapeWithMiko(url, platform, serverPreference);
   } catch (moriErr) {
     try {
       const scraprRes = await scrapeWithScrapr(url, platform, serverPreference);
-      scraprRes.fallbackFromMori = true;
+      scraprRes.fallbackFromMiko = true;
       return scraprRes;
     } catch (_) {
       throw moriErr;
@@ -2098,7 +2098,7 @@ export async function resolveUrl(url, onStatus) {
 
 // 7. Filename Sanitizer
 export function sanitizeFilename(title, ext = "mp4") {
-  const decoded = decodeHtmlEntities(title || "Mori_Download");
+  const decoded = decodeHtmlEntities(title || "Miko_Download");
   const safe = decoded
     .replace(/[\\/:*?"<>|#%&{}\[\]@$^+=~`';,]/g, "")
     .replace(/\s+/g, "_")

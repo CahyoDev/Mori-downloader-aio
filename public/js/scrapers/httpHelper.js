@@ -128,7 +128,7 @@ export async function scraperFetch(options, serverName = "Server") {
     window.__TAURI_INTERNALS__?.invoke ||
     window.__TAURI__?.invoke;
 
-  const nativeBridge = window.MoriMainBridge || window.MoriShareBridge;
+  const nativeBridge = window.MikoMainBridge || window.MikoShareBridge;
   const capHttp = window.Capacitor?.Plugins?.CapacitorHttp || CapacitorHttp;
 
   if (nativeBridge?.httpRequestAsync) {

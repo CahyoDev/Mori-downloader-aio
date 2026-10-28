@@ -25,7 +25,7 @@
 
         <activity
             android:name=".ShareActivity"
-            android:label="Mori Quick Save"
+            android:label="Miko Quick Save"
             android:theme="@style/ShareOverlayTheme"
             android:exported="true"
             android:launchMode="singleTop"

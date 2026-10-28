@@ -620,14 +620,14 @@
 
   // Fetch updated count; fallback to shields.io when GitHub API hits rate limit
   function fetchStars() {
-    return fetch("https://api.github.com/repos/coflyn/Mori")
+    return fetch("https://api.github.com/repos/coflyn/Miko")
       .then((res) => {
         if (!res.ok) throw new Error("GitHub API " + res.status);
         return res.json().then((d) => d.stargazers_count);
       })
       .catch(() => {
         return fetch(
-          "https://img.shields.io/github/stars/coflyn/Mori.json",
+          "https://img.shields.io/github/stars/coflyn/Miko.json",
         ).then((res) => {
           if (!res.ok) throw new Error("Shields API " + res.status);
           return res.json().then((d) => parseInt(d.value, 10));
@@ -797,10 +797,10 @@
     const num = tag.replace(/^v/, "");
 
     const defaultLabels = {
-      android: `Mori v${num}.apk`,
-      macos: `Mori-v${num}-macOS-arm64.dmg`,
-      windows: `Mori-v${num}-Windows-x64-Setup.exe`,
-      ios: `Mori v${num}.ipa (AltStore / TrollStore)`,
+      android: `Miko v${num}.apk`,
+      macos: `Miko-v${num}-macOS-arm64.dmg`,
+      windows: `Miko-v${num}-Windows-x64-Setup.exe`,
+      ios: `Miko v${num}.ipa (AltStore / TrollStore)`,
     };
 
     document.querySelectorAll("[data-dl-file]").forEach((el) => {
@@ -815,7 +815,7 @@
       if (assets && assets[platform]) {
         card.href = assets[platform];
       } else {
-        card.href = `https://github.com/coflyn/Mori/releases/tag/${tag}`;
+        card.href = `https://github.com/coflyn/Miko/releases/tag/${tag}`;
       }
     });
 
@@ -848,7 +848,7 @@
       const targetUrl =
         assets && assets[os]
           ? assets[os]
-          : `https://github.com/coflyn/Mori/releases/tag/${tag}`;
+          : `https://github.com/coflyn/Miko/releases/tag/${tag}`;
 
       if (heroBtn) {
         heroBtn.textContent = osMeta[os].heroText;
@@ -869,7 +869,7 @@
         floatingBtn.href = "#download";
       }
       if (floatingText) {
-        floatingText.textContent = "Download Mori";
+        floatingText.textContent = "Download Miko";
       }
     }
 
@@ -907,7 +907,7 @@
       }
     } catch (_) {}
 
-    fetch("https://api.github.com/repos/coflyn/Mori/releases/latest")
+    fetch("https://api.github.com/repos/coflyn/Miko/releases/latest")
       .then((res) => {
         if (!res.ok) throw new Error("Status " + res.status);
         return res.json();
@@ -968,7 +968,7 @@
     }
   } catch (_) {}
 
-  fetch("https://raw.githubusercontent.com/coflyn/Mori/main/CHANGELOG.md")
+  fetch("https://raw.githubusercontent.com/coflyn/Miko/main/CHANGELOG.md")
     .then((res) => {
       if (!res.ok) throw new Error("Status " + res.status);
       return res.text();
@@ -987,7 +987,7 @@
     .catch(() => {
       container.innerHTML = `
         <div class="changelog-loading">
-          <span>Unable to load updates live. <a href="https://github.com/coflyn/Mori/blob/main/CHANGELOG.md" target="_blank" rel="noopener">View full changelog on GitHub</a></span>
+          <span>Unable to load updates live. <a href="https://github.com/coflyn/Miko/blob/main/CHANGELOG.md" target="_blank" rel="noopener">View full changelog on GitHub</a></span>
         </div>`;
       syncDownloadRelease();
     });

@@ -214,7 +214,7 @@ function renderServerPills(list) {
 }
 
 window.dismissPanel = function () {
-  if (window.MoriShareBridge?.dismiss) window.MoriShareBridge.dismiss();
+  if (window.MikoShareBridge?.dismiss) window.MikoShareBridge.dismiss();
 };
 
 window.cancelOrDismiss = function () {
@@ -227,8 +227,8 @@ window.cancelOrDismiss = function () {
 };
 
 window.showToast = function (msg) {
-  if (window.MoriShareBridge?.showToast) {
-    window.MoriShareBridge.showToast(msg);
+  if (window.MikoShareBridge?.showToast) {
+    window.MikoShareBridge.showToast(msg);
   } else {
     const toast = document.getElementById("toast");
     if (toast) {
@@ -404,7 +404,7 @@ function renderDownloadList(result) {
       <div class="dl-badge" style="flex-shrink: 0;">${downloadBadgeText}</div>
     `;
 
-    btn.onclick = () => triggerDownload(dl, result.title || "Mori_Media", idx);
+    btn.onclick = () => triggerDownload(dl, result.title || "Miko_Media", idx);
     downloadList.appendChild(btn);
   });
 
@@ -428,7 +428,7 @@ async function triggerDownload(dlItem, title, idx) {
   try {
     if (finalUrl.startsWith("applemusic_resolve:")) {
       const payloadStr = finalUrl.replace("applemusic_resolve:", "");
-      const resRaw = window.MoriShareBridge.httpRequest(
+      const resRaw = window.MikoShareBridge.httpRequest(
         JSON.stringify({
           url: "https://aplmate.com/action/track",
           method: "POST",
@@ -476,7 +476,7 @@ async function triggerDownload(dlItem, title, idx) {
     } else if (finalUrl.startsWith("spotidown_resolve:")) {
       const parts = finalUrl.replace("spotidown_resolve:", "").split("|||");
       const payloadStr = parts[0];
-      const resRaw = window.MoriShareBridge.httpRequest(
+      const resRaw = window.MikoShareBridge.httpRequest(
         JSON.stringify({
           url: "https://spotidown.app/action/track",
           method: "POST",
@@ -534,7 +534,7 @@ async function triggerDownload(dlItem, title, idx) {
       }
       mpBody += `--${boundary}--\r\n`;
 
-      const resRaw = window.MoriShareBridge.httpRequest(
+      const resRaw = window.MikoShareBridge.httpRequest(
         JSON.stringify({
           url: BASE + "/action/track",
           method: "POST",
@@ -572,7 +572,7 @@ async function triggerDownload(dlItem, title, idx) {
       let downloadUrl = null;
 
       try {
-        const initRaw = window.MoriShareBridge.httpRequest(
+        const initRaw = window.MikoShareBridge.httpRequest(
           JSON.stringify({
             url: `https://a.ymcdn.org/api/v1/init?p=y&23=1llum1n471&_=${Math.random()}`,
             method: "GET",
@@ -603,7 +603,7 @@ async function triggerDownload(dlItem, title, idx) {
             "Sec-Fetch-Site": "cross-site",
             Accept: "*/*",
           };
-          let convRaw = window.MoriShareBridge.httpRequest(
+          let convRaw = window.MikoShareBridge.httpRequest(
             JSON.stringify({
               url: `${initData.convertURL}&v=${ytId}&f=${format}&_=${Math.random()}`,
               method: "GET",
@@ -617,7 +617,7 @@ async function triggerDownload(dlItem, title, idx) {
               : convRes.data;
 
           while (convData && convData.redirect > 0 && convData.redirectURL) {
-            convRaw = window.MoriShareBridge.httpRequest(
+            convRaw = window.MikoShareBridge.httpRequest(
               JSON.stringify({
                 url: `${convData.redirectURL}&v=${ytId}&f=${format}&_=${Math.random()}`,
                 method: "GET",
@@ -642,7 +642,7 @@ async function triggerDownload(dlItem, title, idx) {
               await new Promise((r) => setTimeout(r, 1500));
               if (!progUrl) break;
 
-              const progRaw = window.MoriShareBridge.httpRequest(
+              const progRaw = window.MikoShareBridge.httpRequest(
                 JSON.stringify({
                   url: `${progUrl}&_=${Math.random()}`,
                   method: "GET",
@@ -677,7 +677,7 @@ async function triggerDownload(dlItem, title, idx) {
       // Fallback: convert1s / ytmp3.gg
       if (!downloadUrl) {
         try {
-          const convResRaw = window.MoriShareBridge.httpRequest(
+          const convResRaw = window.MikoShareBridge.httpRequest(
             JSON.stringify({
               url: "https://hub.convert1s.com/api/download",
               method: "POST",
@@ -709,7 +709,7 @@ async function triggerDownload(dlItem, title, idx) {
             let pollCount = 0;
             while (!downloadUrl && pollCount < 30) {
               await new Promise((r) => setTimeout(r, 1500));
-              const pollRaw = window.MoriShareBridge.httpRequest(
+              const pollRaw = window.MikoShareBridge.httpRequest(
                 JSON.stringify({
                   url: parsedConv.statusUrl,
                   method: "GET",
@@ -755,7 +755,7 @@ async function triggerDownload(dlItem, title, idx) {
     return;
   }
 
-  if (window.MoriShareBridge?.downloadFile) {
+  if (window.MikoShareBridge?.downloadFile) {
     let dlHeaders = {
       Referer: targetUrl,
       "User-Agent": getUserAgent(),
@@ -780,7 +780,7 @@ async function triggerDownload(dlItem, title, idx) {
       dlHeaders.Origin = "https://ytmp3.mobi";
     }
 
-    window.MoriShareBridge.downloadFile(
+    window.MikoShareBridge.downloadFile(
       finalUrl,
       filename,
       folder,
@@ -807,7 +807,7 @@ function getFolderForPlatform(platform) {
     bandcamp: "Bandcamp",
     pixiv: "Pixiv",
   };
-  const base = localStorage.getItem("mori_download_path") || "Mori";
+  const base = localStorage.getItem("mori_download_path") || "Miko";
   const sub = subfolders[platform] || "";
   const autoFolder = localStorage.getItem("mori_auto_folder") !== "false";
   return autoFolder && sub ? `${base}/${sub}` : base;
@@ -819,7 +819,7 @@ function generateFilename(title, type, index) {
     .trim();
 
   const isTrackType = /^\d+\.\s+/.test(cleanTypeLabel);
-  let effectiveTitle = title || "Mori_Media";
+  let effectiveTitle = title || "Miko_Media";
   if (isTrackType) {
     effectiveTitle =
       cleanTypeLabel.replace(/^\d+\.\s+/, "").trim() || cleanTypeLabel;
@@ -840,7 +840,7 @@ function generateFilename(title, type, index) {
     .replace(/\s+/g, " ")
     .substring(0, 60);
 
-  if (!sanitized) sanitized = "Mori_Media";
+  if (!sanitized) sanitized = "Miko_Media";
 
   let ext = "mp4";
   const t = (type || "").toLowerCase();
@@ -942,8 +942,8 @@ function saveHistory(result, url) {
 
     const updated = history.slice(0, 100);
     safeSetHistory(updated);
-    if (window.MoriShareBridge?.savePendingHistory) {
-      window.MoriShareBridge.savePendingHistory(JSON.stringify(newItem));
+    if (window.MikoShareBridge?.savePendingHistory) {
+      window.MikoShareBridge.savePendingHistory(JSON.stringify(newItem));
     }
   } catch (err) {
     console.error("Save history error", err);
@@ -976,8 +976,8 @@ function updateHistorySavedFile(filename, savedPath) {
       }
       history[0] = { ...first, localFiles, localUri: savedPath };
       safeSetHistory(history);
-      if (window.MoriShareBridge?.savePendingHistory) {
-        window.MoriShareBridge.savePendingHistory(JSON.stringify(history[0]));
+      if (window.MikoShareBridge?.savePendingHistory) {
+        window.MikoShareBridge.savePendingHistory(JSON.stringify(history[0]));
       }
     }
   } catch (err) {
@@ -1017,7 +1017,7 @@ window.onDownloadFailed = function (filename, error) {
   });
 };
 
-window.onMoriConfigReady = function () {
+window.onMikoConfigReady = function () {
   initUI();
 };
 
