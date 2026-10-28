@@ -815,7 +815,7 @@
       if (assets && assets[platform]) {
         card.href = assets[platform];
       } else {
-        card.href = `https://github.com/coflyn/Miko/releases/tag/${tag}`;
+        card.href = `https://github.com/cahyodev/Miko/releases/tag/${tag}`;
       }
     });
 
@@ -848,7 +848,7 @@
       const targetUrl =
         assets && assets[os]
           ? assets[os]
-          : `https://github.com/coflyn/Miko/releases/tag/${tag}`;
+          : `https://github.com/cahyodev/Miko/releases/tag/${tag}`;
 
       if (heroBtn) {
         heroBtn.textContent = osMeta[os].heroText;
@@ -987,7 +987,7 @@
     .catch(() => {
       container.innerHTML = `
         <div class="changelog-loading">
-          <span>Unable to load updates live. <a href="https://github.com/coflyn/Miko/blob/main/CHANGELOG.md" target="_blank" rel="noopener">View full changelog on GitHub</a></span>
+          <span>Unable to load updates live. <a href="https://github.com/cahyodev/Miko/blob/main/CHANGELOG.md" target="_blank" rel="noopener">View full changelog on GitHub</a></span>
         </div>`;
       syncDownloadRelease();
     });

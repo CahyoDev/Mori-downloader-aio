@@ -316,7 +316,7 @@ export default {
   "share-err-failed": "Nabigong i-parse ang link.",
   "share-err-no-links": "Walang nahanap na download link.",
   "share-err-unsupported": "Hindi suportadong link ng platform.",
-  "share-msg": "Subukan ang Miko, isang kahanga-hangang app para mag-download ng media mula sa kahit saan! https://github.com/coflyn/Miko",
+  "share-msg": "Subukan ang Miko, isang kahanga-hangang app para mag-download ng media mula sa kahit saan! https://github.com/cahyodev/Miko",
   "share-panel-sub": "I-configure at i-download ang media",
   "share-panel-title": "Miko Mabilisang Pag-save",
   "sound-chime": "Modernong Chime",

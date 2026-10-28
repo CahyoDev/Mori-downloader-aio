@@ -65,7 +65,7 @@ Saving media with Miko takes only three simple steps:
 
 ## 📥 Download & Installation
 
-Pre-compiled, ready-to-use packages are available for all devices on **[GitHub Releases](https://github.com/coflyn/Miko/releases)** and **[npm](https://www.npmjs.com/package/@coflyn/mori)**.
+Pre-compiled, ready-to-use packages are available for all devices on **[GitHub Releases](https://github.com/cahyodev/Miko/releases)** and **[npm](https://www.npmjs.com/package/@coflyn/mori)**.
 
 | Platform                                                                                                                        | Available Packages                                                | Installation Guide                                                                  |
 | :------------------------------------------------------------------------------------------------------------------------------ | :---------------------------------------------------------------- | :---------------------------------------------------------------------------------- |
@@ -316,6 +316,6 @@ Miko is free and open-source software licensed under the **[GNU General Public L
 
 ---
 
-Developed with ❤️ by coflyn.  
-GitHub: https://github.com/coflyn  
-Instagram: @\_coflyn
+Developed with ❤️ by cahyok.  
+GitHub: https://github.com/cahyodev  
+Instagram: @\_cahyok_10

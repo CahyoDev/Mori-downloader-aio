@@ -161,7 +161,7 @@ shareAppBtn?.addEventListener("click", async () => {
     await Share.share({
       title: "Miko App",
       text: lang["share-msg"],
-      url: "https://github.com/coflyn/Miko",
+      url: "https://github.com/cahyodev/Miko",
       dialogTitle: "Share Miko",
     });
   } else {
@@ -170,7 +170,7 @@ shareAppBtn?.addEventListener("click", async () => {
       navigator.share({
         title: "Miko App",
         text: lang["share-msg"],
-        url: "https://github.com/coflyn/Miko",
+        url: "https://github.com/cahyodev/Miko",
       });
     } else {
       showToast(t("toast-share-not-supported"));

@@ -32,7 +32,7 @@ Thank you for your interest in contributing to **Miko**! Whether you want to fix
 ## 💡 How Can I Contribute?
 
 ### 1. Reporting Bugs & Requesting Features
-* Check existing [GitHub Issues](https://github.com/coflyn/Miko/issues) before opening a new one to prevent duplicates.
+* Check existing [GitHub Issues](https://https://github.com/cahyodev.com/) before opening a new one to prevent duplicates.
 * Clearly specify your **Platform & OS version** (Android / macOS / Windows / iOS), **Miko Version**, and the **Source URL** causing the error.
 
 ### 2. Translating & Localization (`public/js/i18n/`)
@@ -255,6 +255,7 @@ When modifying styles:
 
 ---
 
-Developed with ❤️ by coflyn.  
-GitHub: https://github.com/coflyn  
-Instagram: @\_coflyn
+Developed with ❤️ by cahyok.  
+GitHub: https://github.com/cahyodev  
+Instagram: @\_cahyok_10
+

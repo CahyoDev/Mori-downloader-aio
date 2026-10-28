@@ -7,8 +7,8 @@
 <p align="center">
   <a href="https://www.npmjs.com/package/@coflyn/mori"><img src="https://img.shields.io/npm/v/@coflyn/mori?style=flat-square&color=blue" alt="NPM Version"></a>
   <a href="https://www.npmjs.com/package/@coflyn/mori"><img src="https://img.shields.io/npm/dm/@coflyn/mori?style=flat-square&color=green" alt="NPM Downloads"></a>
-  <a href="https://github.com/coflyn/Miko"><img src="https://img.shields.io/badge/License-GPL--3.0-blue?style=flat-square" alt="License"></a>
-  <a href="https://github.com/coflyn/Miko"><img src="https://img.shields.io/badge/GitHub-coflyn%2FMiko-black?style=flat-square&logo=github" alt="GitHub"></a>
+  <a href="https://github.com/cahyodev/Miko"><img src="https://img.shields.io/badge/License-GPL--3.0-blue?style=flat-square" alt="License"></a>
+  <a href="https://github.com/cahyodev/Miko"><img src="https://img.shields.io/badge/GitHub-coflyn%2FMiko-black?style=flat-square&logo=github" alt="GitHub"></a>
 </p>
 
 <p align="center">
@@ -17,7 +17,7 @@
 
 ---
 
-Command-line interface for **[Miko](https://github.com/coflyn/Miko)**. Download watermark-free videos, high-resolution photos, music, playlists, and compile albums into PDF across 16 platforms directly from your terminal.
+Command-line interface for **[Miko](https://github.com/cahyodev/Miko)**. Download watermark-free videos, high-resolution photos, music, playlists, and compile albums into PDF across 16 platforms directly from your terminal.
 
 ## ⚡ Quick Start
 
@@ -149,5 +149,5 @@ Inside the interactive prompt, type `/` to access built-in tools:
 
 ## 📄 License
 
-Licensed under the [GNU General Public License v3.0](https://github.com/coflyn/Miko/blob/main/LICENSE).
-Part of the **[Miko](https://github.com/coflyn/Miko)** project.
+Licensed under the [GNU General Public License v3.0](https://github.com/cahyodev/Miko/blob/main/LICENSE).
+Part of the **[Miko](https://github.com/cahyodev/Miko)** project.

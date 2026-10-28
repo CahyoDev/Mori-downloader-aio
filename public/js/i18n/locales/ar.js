@@ -316,7 +316,7 @@ export default {
   "share-err-failed": "فشل في تحليل الرابط.",
   "share-err-no-links": "لم يتم العثور على روابط تحميل.",
   "share-err-unsupported": "رابط منصة غير مدعوم.",
-  "share-msg": "جرب تطبيق Miko الرائع لتحميل الوسائط من أي مكان! https://github.com/coflyn/Miko",
+  "share-msg": "جرب تطبيق Miko الرائع لتحميل الوسائط من أي مكان! https://github.com/cahyodev/Miko",
   "share-panel-sub": "إعداد وتحميل الوسائط",
   "share-panel-title": "حفظ سريع Miko",
   "sound-chime": "رنين حديث",

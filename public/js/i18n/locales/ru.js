@@ -316,7 +316,7 @@ export default {
   "share-err-failed": "Не удалось разобрать ссылку.",
   "share-err-no-links": "Ссылки для скачивания не найдены.",
   "share-err-unsupported": "Неподдерживаемая ссылка платформы.",
-  "share-msg": "Попробуйте Miko — классное приложение для загрузки медиа откуда угодно! https://github.com/coflyn/Miko",
+  "share-msg": "Попробуйте Miko — классное приложение для загрузки медиа откуда угодно! https://github.com/cahyodev/Miko",
   "share-panel-sub": "Настройка и загрузка медиа",
   "share-panel-title": "Miko Быстрое сохранение",
   "sound-chime": "Колокольчик",

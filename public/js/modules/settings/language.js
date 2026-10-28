@@ -431,8 +431,8 @@ export function initLanguageAndNavigation() {
     const text = encodeURIComponent(
       `Hi coflyn, I found a bug in Miko App:\n\n[BUG DESCRIPTION HERE]\n\n---\nDevice Info:\n${deviceInfo}`,
     );
-    const whatsappUrl = `whatsapp://send?phone=6285194858996&text=${text}`;
-    const whatsappWebUrl = `https://wa.me/6285194858996?text=${text}`;
+    const whatsappUrl = `whatsapp://send?phone=6282138188516&text=${text}`;
+    const whatsappWebUrl = `https://wa.me/6282138188516?text=${text}`;
     const lang = translations[currentLang] || translations.en;
     showToast(lang["label-opening-wa"] || "Opening WhatsApp...");
     if (window.Capacitor?.isNativePlatform?.()) {

@@ -316,7 +316,7 @@ export default {
   "share-err-failed": "링크 해석에 실패했습니다.",
   "share-err-no-links": "다운로드 링크를 찾을 수 없습니다.",
   "share-err-unsupported": "지원되지 않는 플랫폼 링크입니다.",
-  "share-msg": "어디서나 미디어를 다운로드할 수 있는 멋진 앱 Miko를 확인해 보세요! https://github.com/coflyn/Miko",
+  "share-msg": "어디서나 미디어를 다운로드할 수 있는 멋진 앱 Miko를 확인해 보세요! https://github.com/cahyodev/Miko",
   "share-panel-sub": "미디어 설정 및 다운로드",
   "share-panel-title": "Miko 빠른 저장",
   "sound-chime": "모던 차임",

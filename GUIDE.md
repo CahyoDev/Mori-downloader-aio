@@ -6,7 +6,7 @@ This guide covers everything you need to know about installing, sideloading, tro
 
 ## 📥 Download Official Releases
 
-Always download official Miko release binaries directly from the **[GitHub Releases](https://github.com/coflyn/Miko/releases)** page or install via **npm**.
+Always download official Miko release binaries directly from the **[GitHub Releases](https://github.com/cahyodev/Miko/releases)** page or install via **npm**.
 
 | Platform | Recommended Asset | Installation Method |
 | :--- | :--- | :--- |
@@ -107,6 +107,7 @@ Miko is **100% ad-free, open-source, and contains zero trackers or telemetry**.
 
 ---
 
-Developed with ❤️ by coflyn.  
-GitHub: https://github.com/coflyn  
-Instagram: @\_coflyn
+Developed with ❤️ by cahyok.  
+GitHub: https://github.com/cahyodev  
+Instagram: @\_cahyok_10
+

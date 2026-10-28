@@ -343,7 +343,7 @@ export default {
   "share-err-no-links": "ダウンロードリンクが見つかりませんでした。",
   "share-err-unsupported": "サポートされていないプラットフォームのリンクです。",
   "share-msg":
-    "どこからでもメディアをダウンロードできる素晴らしいアプリ、Mikoをチェックしてください！ https://github.com/coflyn/Miko",
+    "どこからでもメディアをダウンロードできる素晴らしいアプリ、Mikoをチェックしてください！ https://github.com/cahyodev/Miko",
   "share-panel-sub": "メディアの設定とダウンロード",
   "share-panel-title": "Miko クイック保存",
   "sound-chime": "モダンチャイム",

@@ -22,10 +22,10 @@
   "license": "GPL-3.0-or-later",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/coflyn/Miko.git",
+    "url": "git+https://github.com/cahyodev/Miko.git",
     "directory": "cli"
   },
-  "homepage": "https://github.com/coflyn/Miko#readme",
+  "homepage": "https://github.com/cahyodev/Miko#readme",
   "keywords": [
     "downloader",
     "tiktok",

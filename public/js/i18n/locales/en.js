@@ -1,5 +1,5 @@
 export default {
-  "about-text": "Miko is a fast and versatile media downloader. Built with love by coflyn.",
+  "about-text": "Miko is a fast and versatile media downloader. Built with love by cahyok.",
   "anim-fast": "Fast",
   "anim-normal": "Normal",
   "anim-off": "Off",
@@ -320,7 +320,7 @@ export default {
   "share-err-failed": "Failed to parse link.",
   "share-err-no-links": "No download links found.",
   "share-err-unsupported": "Unsupported platform link.",
-  "share-msg": "Check out Miko, an awesome app to download media from anywhere! https://github.com/coflyn/Miko",
+  "share-msg": "Check out Miko, an awesome app to download media from anywhere! https://github.com/cahyodev/Miko",
   "share-panel-sub": "Configure & download media",
   "share-panel-title": "Miko Quick Save",
   "sound-chime": "Modern Chime",

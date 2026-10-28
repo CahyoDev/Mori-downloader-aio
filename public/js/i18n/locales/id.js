@@ -320,7 +320,7 @@ export default {
   "share-err-failed": "Gagal memproses tautan.",
   "share-err-no-links": "Tidak ada tautan unduhan ditemukan.",
   "share-err-unsupported": "Tautan platform tidak didukung.",
-  "share-msg": "Cobain Miko, aplikasi keren untuk mengunduh media dari mana saja! https://github.com/coflyn/Miko",
+  "share-msg": "Cobain Miko, aplikasi keren untuk mengunduh media dari mana saja! https://github.com/cahyodev/Miko",
   "share-panel-sub": "Konfigurasi & unduh media",
   "share-panel-title": "Miko Simpan Cepat",
   "sound-chime": "Modern Chime",

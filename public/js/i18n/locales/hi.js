@@ -316,7 +316,7 @@ export default {
   "share-err-failed": "लिंक को पार्स करने में विफल।",
   "share-err-no-links": "कोई डाउनलोड लिंक नहीं मिला।",
   "share-err-unsupported": "असमर्थित प्लेटफ़ॉर्म लिंक।",
-  "share-msg": "Miko आज़माएं, कहीं से भी मीडिया डाउनलोड करने के लिए एक शानदार ऐप! https://github.com/coflyn/Miko",
+  "share-msg": "Miko आज़माएं, कहीं से भी मीडिया डाउनलोड करने के लिए एक शानदार ऐप! https://github.com/cahyodev/Miko",
   "share-panel-sub": "मीडिया कॉन्फ़िगर और डाउनलोड करें",
   "share-panel-title": "Miko त्वरित बचत",
   "sound-chime": "आधुनिक झंकार",

@@ -28,7 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Accessible via `/rollback` or `/engine` management menu.
 
 ### Fixed
-- **Facebook SnapSave Extraction**: Fixed `(0, j.decodeSnapSave) is not a function` error when extracting Facebook media by defining `decodeSnapSave` and `extractFinalUrl` in engine runtime dependencies ([#18](https://github.com/coflyn/Miko/issues/18)).
+- **Facebook SnapSave Extraction**: Fixed `(0, j.decodeSnapSave) is not a function` error when extracting Facebook media by defining `decodeSnapSave` and `extractFinalUrl` in engine runtime dependencies ([#18](https://github.com/cahyodev/Miko/issues/18)).
 
 ## [1.1.0] - 2026-10-21
 
