@@ -6,9 +6,32 @@ on:
 jobs:
   build:
     runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Ambil src-tauri dari rilis v4.5.1 repo asli
+        run: |
+          git clone --depth 1 --branch v4.5.1 https://github.com/coflyn/Mori.git _upstream
+          rm -rf src-tauri
+          cp -r _upstream/src-tauri ./src-tauri
+          ls src-tauri
+
+      - name: Ubah nama app jadi MIKO & matikan tanda tangan updater
+        run: |
+          node -e "
+          const fs=require('fs');
+          const p='src-tauri/tauri.conf.json';
+          const c=JSON.parse(fs.readFileSync(p,'utf8'));
+          c.productName='MIKO';
+          if(c.bundle) c.bundle.createUpdaterArtifacts=false;
+          if(c.app && Array.isArray(c.app.windows)) c.app.windows.forEach(w=>{w.title='MIKO';});
+          fs.writeFileSync(p, JSON.stringify(c,null,2));
+          console.log(JSON.stringify({productName:c.productName, frontendDist:c.build&&c.build.frontendDist, beforeBuild:c.build&&c.build.beforeBuildCommand},null,2));
+          "
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -24,12 +47,12 @@ jobs:
           workspaces: src-tauri
 
       - name: Install dependencies
-        run: npm install
+        run: |
+          npm install
+          npm install --no-save @tauri-apps/cli@^2
 
       - name: Build Windows installer
-        run: |
-          npm install --no-save @tauri-apps/cli@^2
-          npx tauri build
+        run: npx tauri build
 
       - name: Upload installer
         uses: actions/upload-artifact@v4
