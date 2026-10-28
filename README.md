@@ -19,7 +19,7 @@
 
 Save and download videos, photos, and music from 16 platforms. No watermarks. No accounts. No tracking. Everything stays on your device.
 
-<a href="https://sociabuzz.com/coflyn/tribe" target="_blank">
+<a href="https://sociabuzz.com/cahyok/tribe" target="_blank">
   <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" height="60" />
 </a>
 
