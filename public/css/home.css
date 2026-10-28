@@ -239,7 +239,7 @@ input[type="text"]:focus {
 }
 
 .thumbnail-wrapper::before {
-  content: "MORI";
+  content: "MIKO";
   position: absolute;
   font-weight: 800;
   letter-spacing: 10px;
@@ -628,7 +628,7 @@ input[type="text"]:focus {
 }
 
 .mori-player-container.is-audio::before {
-  content: "MORI";
+  content: "MIKO";
   position: absolute;
   font-weight: 800;
   letter-spacing: 12px;

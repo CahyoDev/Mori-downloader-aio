@@ -249,7 +249,7 @@
 }
 
 .gallery-skeleton-thumb::before {
-  content: "MORI";
+  content: "MIKO";
   position: absolute;
   font-weight: 800;
   letter-spacing: 6px;
@@ -363,7 +363,7 @@
 }
 
 .gallery-thumb::before {
-  content: "MORI";
+  content: "MIKO";
   position: absolute;
   font-weight: 800;
   letter-spacing: 6px;
